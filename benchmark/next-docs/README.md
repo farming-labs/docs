@@ -129,6 +129,33 @@ Latest measurements and the remaining improvement list are in the
 builds, separate baseline/candidate batches, raw samples and verification receipts. The
 [original 36-build report](./results/2026-10-16/REPORT.md) remains available as the historical baseline.
 
+## MDX share of the build
+
+These scripts measure how much of a Farming Labs build is MDX compilation, to bound what a faster or
+Rust content engine could save. They use the same corpus and setup as the build benchmark above.
+
+Single core, split into parsing, plugins and Shiki highlighting, with Next's bundled Rust
+`mdxjs-rs` as a parse-only comparison:
+
+```sh
+node --expose-gc benchmark/next-docs/mdx-compile.mjs --pages 500 --rounds 5 --out mdx-compile-500.json
+```
+
+Inside real cold builds of the farming fixture:
+
+```sh
+python3 benchmark/next-docs/mdx_ceiling.py timing --pages 100 500 --trials 2
+python3 benchmark/next-docs/mdx_ceiling.py replay --pages 100 --order real,replay,replay,real,real,replay
+```
+
+`timing` wraps the real MDX loader and records when each page compiled and in which Turbopack
+worker. `replay` stores the loader's output in one record build. Its replay builds then return
+those exact bytes without compiling, and every build's rendered pages must match. Both write
+`artifacts/<run-id>/results.json` and remove each fixture app after its build. They stop before a
+build when the disk has less than `--min-free-gib` free (default 3).
+
+Results and the conclusion are in the [MDX ceiling report](./results/2026-11-12-mdx-ceiling/REPORT.md).
+
 ## Reference setup
 
 The Fumadocs baseline follows its [Next.js integration](https://www.fumadocs.dev/docs/mdx/next),

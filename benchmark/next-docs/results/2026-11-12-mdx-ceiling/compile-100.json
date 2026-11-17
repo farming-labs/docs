@@ -1,0 +1,145 @@
+{
+  "pages": 100,
+  "rounds": 7,
+  "warmupRounds": 1,
+  "sourceBytes": 755580,
+  "node": "v24.21.0",
+  "cpu": "Apple M1",
+  "cpus": 8,
+  "loadAverageAtStart": [
+    16.470703125,
+    14.33349609375,
+    10.94384765625
+  ],
+  "loadAverageAtEnd": [
+    13.33056640625,
+    13.83984375,
+    10.92041015625
+  ],
+  "summary": [
+    {
+      "variant": "rust-mdxjs-rs (gfm, no plugins)",
+      "firstCallMs": 136.6,
+      "cpuMsMedian": 158.6,
+      "cpuMsMin": 94,
+      "cpuMsMax": 167.9,
+      "wallMsMedian": 195.7,
+      "wallMsMin": 94.4,
+      "wallMsMax": 311.4,
+      "perPageMsMedian": 1.316,
+      "perPageMsP95": 4.024
+    },
+    {
+      "variant": "js @mdx-js/mdx (gfm+frontmatter, no plugins)",
+      "firstCallMs": 28.5,
+      "cpuMsMedian": 974.6,
+      "cpuMsMin": 649.5,
+      "cpuMsMax": 1088.4,
+      "wallMsMedian": 800.4,
+      "wallMsMin": 424.5,
+      "wallMsMax": 1471.5,
+      "perPageMsMedian": 6.862,
+      "perPageMsP95": 21.73
+    },
+    {
+      "variant": "js full chain minus Shiki",
+      "firstCallMs": 28.1,
+      "cpuMsMedian": 1018,
+      "cpuMsMin": 734.9,
+      "cpuMsMax": 1187.7,
+      "wallMsMedian": 852.2,
+      "wallMsMin": 503.8,
+      "wallMsMax": 1281.8,
+      "perPageMsMedian": 6.702,
+      "perPageMsP95": 15.868
+    },
+    {
+      "variant": "js full chain (what next build runs)",
+      "firstCallMs": 677.8,
+      "cpuMsMedian": 2404.5,
+      "cpuMsMin": 1519.7,
+      "cpuMsMax": 2748.4,
+      "wallMsMedian": 2417.1,
+      "wallMsMin": 1172,
+      "wallMsMax": 3653.6,
+      "perPageMsMedian": 20.656,
+      "perPageMsP95": 50.023
+    }
+  ],
+  "samples": {
+    "rust-mdxjs-rs (gfm, no plugins)": [
+      195.72229200000038,
+      311.43845800000054,
+      200.40949999999793,
+      211.30541699999958,
+      130.63916700000118,
+      97.50041699999565,
+      94.4020840000012
+    ],
+    "js @mdx-js/mdx (gfm+frontmatter, no plugins)": [
+      1471.5121659999986,
+      1385.7988330000007,
+      1077.7514159999992,
+      800.3855409999996,
+      767.0456670000021,
+      480.0485839999965,
+      424.5070840000044
+    ],
+    "js full chain minus Shiki": [
+      763.7364579999994,
+      869.3904169999987,
+      1281.7716669999973,
+      901.2958330000001,
+      852.244209000004,
+      592.6237499999988,
+      503.78120800000033
+    ],
+    "js full chain (what next build runs)": [
+      2382.553167,
+      2853.2133749999994,
+      3653.6078750000015,
+      3068.8220409999994,
+      2417.100207999996,
+      1390.450834000003,
+      1172.0383750000037
+    ]
+  },
+  "cpuSamples": {
+    "rust-mdxjs-rs (gfm, no plugins)": [
+      161.536,
+      167.912,
+      160.904,
+      158.575,
+      102.787,
+      97.163,
+      94.03
+    ],
+    "js @mdx-js/mdx (gfm+frontmatter, no plugins)": [
+      1088.373,
+      1080.199,
+      1038.606,
+      974.573,
+      923.298,
+      719.776,
+      649.529
+    ],
+    "js full chain minus Shiki": [
+      936,
+      1024.529,
+      1187.697,
+      1073.163,
+      1018.036,
+      812.551,
+      734.925
+    ],
+    "js full chain (what next build runs)": [
+      2455.774,
+      2404.489,
+      2748.446,
+      2718.068,
+      2206.093,
+      1716.221,
+      1519.707
+    ]
+  }
+}

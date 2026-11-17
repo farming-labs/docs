@@ -1,0 +1,264 @@
+{
+  "runId": "replay-3",
+  "commit": "b926605bdbcaedb770c215240fea0550b042ebf8",
+  "node": "v24.21.0",
+  "processor": "Apple M1",
+  "logicalCpus": 8,
+  "order": [
+    "record",
+    "real",
+    "replay",
+    "replay",
+    "real",
+    "real",
+    "replay"
+  ],
+  "rows": [
+    {
+      "pages": 100,
+      "label": "record",
+      "wallSeconds": 16.601415499999998,
+      "peakTreeRssMiB": 2844.890625,
+      "rssSamples": 69,
+      "phasesSeconds": {
+        "compile": 9.8,
+        "typecheck": 2.4,
+        "staticGeneration": 2.1
+      },
+      "reapedCpuSeconds": 42.655072,
+      "loadAvg1mAtStart": 10.82958984375,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "record-100-1794521953.log",
+      "sourceBytes": 755580,
+      "cachedModules": 100
+    },
+    {
+      "pages": 100,
+      "label": "real",
+      "wallSeconds": 24.267475042,
+      "peakTreeRssMiB": 2549.1875,
+      "rssSamples": 88,
+      "phasesSeconds": {
+        "compile": 15.6,
+        "typecheck": 3.3,
+        "staticGeneration": 2.8
+      },
+      "reapedCpuSeconds": 49.37565000000001,
+      "loadAvg1mAtStart": 11.30810546875,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "real-100-1794521971.log",
+      "sourceBytes": 755580
+    },
+    {
+      "pages": 100,
+      "label": "replay",
+      "wallSeconds": 16.545779417,
+      "peakTreeRssMiB": 2461.09375,
+      "rssSamples": 68,
+      "phasesSeconds": {
+        "compile": 7.1,
+        "typecheck": 2.6,
+        "staticGeneration": 1.774
+      },
+      "reapedCpuSeconds": 44.094218,
+      "loadAvg1mAtStart": 11.8662109375,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "replay-100-1794521996.log",
+      "sourceBytes": 755580
+    },
+    {
+      "pages": 100,
+      "label": "replay",
+      "wallSeconds": 12.345072416,
+      "peakTreeRssMiB": 2672.828125,
+      "rssSamples": 53,
+      "phasesSeconds": {
+        "compile": 7.2,
+        "typecheck": 1.847,
+        "staticGeneration": 1.639
+      },
+      "reapedCpuSeconds": 42.934657999999985,
+      "loadAvg1mAtStart": 11.62353515625,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "replay-100-1794522013.log",
+      "sourceBytes": 755580
+    },
+    {
+      "pages": 100,
+      "label": "real",
+      "wallSeconds": 15.062225666000003,
+      "peakTreeRssMiB": 2854.078125,
+      "rssSamples": 64,
+      "phasesSeconds": {
+        "compile": 9.3,
+        "typecheck": 2.4,
+        "staticGeneration": 1.713
+      },
+      "reapedCpuSeconds": 44.43708600000001,
+      "loadAvg1mAtStart": 11.40771484375,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "real-100-1794522026.log",
+      "sourceBytes": 755580
+    },
+    {
+      "pages": 100,
+      "label": "real",
+      "wallSeconds": 19.39164383299999,
+      "peakTreeRssMiB": 2540.46875,
+      "rssSamples": 79,
+      "phasesSeconds": {
+        "compile": 11.4,
+        "typecheck": 3.3,
+        "staticGeneration": 2.4
+      },
+      "reapedCpuSeconds": 46.54116200000003,
+      "loadAvg1mAtStart": 11.68798828125,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "real-100-1794522042.log",
+      "sourceBytes": 755580
+    },
+    {
+      "pages": 100,
+      "label": "replay",
+      "wallSeconds": 14.837952083000005,
+      "peakTreeRssMiB": 2532.671875,
+      "rssSamples": 61,
+      "phasesSeconds": {
+        "compile": 8.1,
+        "typecheck": 3.1,
+        "staticGeneration": 1.7690000000000001
+      },
+      "reapedCpuSeconds": 45.080122,
+      "loadAvg1mAtStart": 12.55615234375,
+      "routeModules": 104,
+      "docsPages": 100,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "0283e0dcb571334a",
+          "visibleChars": 16670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "389ed247fd3924bf",
+          "visibleChars": 16704
+        },
+        "docs/page-0099": {
+          "shikiLines": 54,
+          "visibleSha256": "5535b89fbe6e1c9e",
+          "visibleChars": 16735
+        }
+      },
+      "log": "replay-100-1794522062.log",
+      "sourceBytes": 755580
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "runId": "replay-4",
+  "commit": "b926605bdbcaedb770c215240fea0550b042ebf8",
+  "node": "v24.21.0",
+  "processor": "Apple M1",
+  "logicalCpus": 8,
+  "order": [
+    "record",
+    "real",
+    "replay",
+    "replay",
+    "real"
+  ],
+  "rows": [
+    {
+      "pages": 500,
+      "label": "record",
+      "wallSeconds": 51.89587675,
+      "peakTreeRssMiB": 3322.015625,
+      "rssSamples": 205,
+      "phasesSeconds": {
+        "compile": 29.7,
+        "typecheck": 5.8,
+        "staticGeneration": 11.6
+      },
+      "reapedCpuSeconds": 106.509495,
+      "loadAvg1mAtStart": 12.34619140625,
+      "routeModules": 504,
+      "docsPages": 500,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "59b58671370b4cb8",
+          "visibleChars": 24670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "90ff3ced3382b65b",
+          "visibleChars": 24704
+        },
+        "docs/page-0499": {
+          "shikiLines": 54,
+          "visibleSha256": "df3cbe6007842342",
+          "visibleChars": 24796
+        }
+      },
+      "log": "record-500-1794522078.log",
+      "sourceBytes": 3791980,
+      "cachedModules": 500
+    },
+    {
+      "pages": 500,
+      "label": "real",
+      "wallSeconds": 47.64963541699999,
+      "peakTreeRssMiB": 3706.703125,
+      "rssSamples": 197,
+      "phasesSeconds": {
+        "compile": 24.2,
+        "typecheck": 5.8,
+        "staticGeneration": 11.5
+      },
+      "reapedCpuSeconds": 104.07047800000001,
+      "loadAvg1mAtStart": 13.07958984375,
+      "routeModules": 504,
+      "docsPages": 500,
+      "fingerprint": {
+        "docs": {
+          "shikiLines": 54,
+          "visibleSha256": "59b58671370b4cb8",
+          "visibleChars": 24670
+        },
+        "docs/page-0001": {
+          "shikiLines": 54,
+          "visibleSha256": "90ff3ced3382b65b",
+          "visibleChars": 24704
+        },
+        "docs/page-0499": {
+          "shikiLines": 54,
+          "visibleSha256": "df3cbe6007842342",
+          "visibleChars": 24796
+        }
+      },
+      "log": "real-500-1794522134.log",
+      "sourceBytes": 3791980
+    }
+  ]
+}
