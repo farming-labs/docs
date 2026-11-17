@@ -119,19 +119,39 @@ describe("docsMdx app plugins", { timeout: 20_000 }, () => {
     );
   });
 
-  it("compiles every production build rather than reusing output it cannot fingerprint", async () => {
+  it("reuses production output for app plugins it can fingerprint", async () => {
     const cacheFile = path.join(root, ".cache", "farming-docs", "mdx-v1.json");
+    const options = { config: { mdx: { remarkPlugins: ["./lib/remark-note.mjs"] } } };
 
-    await bundle({ config: { mdx: { remarkPlugins: ["./lib/remark-note.mjs"] } } });
-    await expect(fs.access(cacheFile)).rejects.toThrow();
-    await bundle({});
-    await expect(fs.access(cacheFile)).resolves.toBeUndefined();
+    const first = await bundle(options);
+    expect(first).toContain("remark-plugin-ran");
+    const stored = await fs.readFile(cacheFile, "utf8");
+    expect(stored).toContain("remark-plugin-ran");
+    expect(await bundle(options)).toBe(first);
   });
 
-  it("rejects an explicit build cache alongside app plugins", async () => {
+  it("compiles every production build when an app plugin cannot be fingerprinted", async () => {
+    const cacheFile = path.join(root, ".cache", "farming-docs", "mdx-v1.json");
+    await plugin(
+      "remark-computed.mjs",
+      "export const load = (name) => import(name);\nexport default function remarkComputed() { return () => {}; }",
+    );
+
+    await bundle({ config: { mdx: { remarkPlugins: ["./lib/remark-computed.mjs"] } } });
+    await expect(fs.access(cacheFile)).rejects.toThrow();
+  });
+
+  it("rejects an explicit build cache alongside an app plugin it cannot fingerprint", async () => {
+    await plugin(
+      "remark-computed.mjs",
+      "export const load = (name) => import(name);\nexport default function remarkComputed() { return () => {}; }",
+    );
     await expect(
-      bundle({ buildCache: true, config: { mdx: { remarkPlugins: ["./lib/remark-note.mjs"] } } }),
-    ).rejects.toThrow("`buildCache: true` cannot be combined with `mdx` plugins");
+      bundle({
+        buildCache: true,
+        config: { mdx: { remarkPlugins: ["./lib/remark-computed.mjs"] } },
+      }),
+    ).rejects.toThrow("`buildCache: true` cannot fingerprint the `mdx` plugins");
   });
 
   it("rejects a plugin that is not a module or a [module, options] tuple", async () => {

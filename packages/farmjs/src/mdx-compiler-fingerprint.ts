@@ -11,7 +11,7 @@ const MAX_FINGERPRINT_BYTES = 128 * 1024 * 1024;
 let pendingFingerprint: Promise<string | undefined> | undefined;
 let loadedFingerprint: string | undefined;
 
-async function packageRoot(name: string, importer: string): Promise<string> {
+export async function packageRoot(name: string, importer: string): Promise<string> {
   const require = createRequire(importer);
   for (const base of require.resolve.paths(name) ?? []) {
     const candidate = path.join(base, name);
@@ -48,7 +48,6 @@ async function readCompilerFingerprint(): Promise<string | undefined> {
     const importer = fileURLToPath(import.meta.url);
     const docsRoot = await packageRoot("@farming-labs/docs", importer);
     const directories = new Set([implementation, path.join(docsRoot, "dist")]);
-    const packages = new Set<string>();
     const queue: string[] = [];
     for (const name of [
       "@mdx-js/rollup",
@@ -62,27 +61,36 @@ async function readCompilerFingerprint(): Promise<string | undefined> {
     for (const name of ["@mdx-js/mdx", "github-slugger", "parse-entities", "remark-gfm"]) {
       queue.push(await packageRoot(name, path.join(docsRoot, "package.json")));
     }
-    while (queue.length) {
-      const root = queue.pop()!;
-      if (packages.has(root)) continue;
-      packages.add(root);
-      directories.add(root);
-      const manifest = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
-      for (const name of Object.keys(manifest.dependencies ?? {})) {
-        if (!name.startsWith("@types/"))
-          queue.push(await packageRoot(name, path.join(root, "package.json")));
-      }
-      for (const name of Object.keys(manifest.optionalDependencies ?? {})) {
-        try {
-          queue.push(await packageRoot(name, path.join(root, "package.json")));
-        } catch {
-          /* Optional dependency absent. */
-        }
-      }
-    }
+    await addPackageTrees(queue, directories);
     return await fingerprintMdxFiles([...directories]);
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * @internal Adds each package root in `queue`, and every package its dependencies reach, to
+ * `directories`, so their implementation bytes key the fingerprint.
+ */
+export async function addPackageTrees(queue: string[], directories: Set<string>): Promise<void> {
+  const packages = new Set<string>();
+  while (queue.length) {
+    const root = queue.pop()!;
+    if (packages.has(root)) continue;
+    packages.add(root);
+    directories.add(root);
+    const manifest = JSON.parse(await fs.readFile(path.join(root, "package.json"), "utf8"));
+    for (const name of Object.keys(manifest.dependencies ?? {})) {
+      if (!name.startsWith("@types/"))
+        queue.push(await packageRoot(name, path.join(root, "package.json")));
+    }
+    for (const name of Object.keys(manifest.optionalDependencies ?? {})) {
+      try {
+        queue.push(await packageRoot(name, path.join(root, "package.json")));
+      } catch {
+        /* Optional dependency absent. */
+      }
+    }
   }
 }
 

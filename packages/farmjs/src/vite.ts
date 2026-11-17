@@ -26,6 +26,7 @@ import { rehypeCode } from "fumadocs-core/mdx-plugins/rehype-code";
 import { normalizePath, type PluginOption, type Plugin, type ResolvedConfig } from "vite";
 import { MdxBuildCache, mdxCacheDigest } from "./mdx-build-cache.js";
 import { fingerprintMdxCompiler } from "./mdx-compiler-fingerprint.js";
+import { fingerprintMdxPlugins } from "./mdx-plugin-fingerprint.js";
 
 export interface FarmDocsCodeBlockThemes {
   /** Shiki theme used in light mode. */
@@ -380,20 +381,29 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
   const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
   const compiler = mdx({ include: /\.(md|mdx)$/, ...mdxCompileOptions(options) });
-  const appCompilers = new Map<string, Promise<typeof compiler | undefined>>();
+  const appCompilers = new Map<
+    string,
+    Promise<{ compiler: typeof compiler; fingerprint: string | undefined } | undefined>
+  >();
   const appCompiler = (root: string) => {
     let pending = appCompilers.get(root);
     if (!pending) {
       pending = readDocsMdxOptions(root, options).then(async (value) => {
         if (value === undefined) return undefined;
-        if (options.buildCache === true) {
+        // Read before loading, so the fingerprint describes the code this process runs.
+        const fingerprint =
+          options.buildCache === false ? undefined : await fingerprintMdxPlugins(value, root);
+        if (options.buildCache === true && fingerprint === undefined) {
           throw new Error(
-            "withDocs `buildCache: true` cannot be combined with `mdx` plugins in docs.config, " +
-              "because the build cache cannot fingerprint them. Remove `buildCache` to compile every page.",
+            "withDocs `buildCache: true` cannot fingerprint the `mdx` plugins in docs.config: " +
+              "one of them, or a module it imports, could not be traced. Remove `buildCache` to compile every page.",
           );
         }
         const loaded = await loadMdxExtensions(value, root);
-        return mdx({ include: /\.(md|mdx)$/, ...mdxCompileOptions(options, loaded) });
+        return {
+          compiler: mdx({ include: /\.(md|mdx)$/, ...mdxCompileOptions(options, loaded) }),
+          fingerprint,
+        };
       });
       appCompilers.set(root, pending);
     }
@@ -423,10 +433,10 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
     async configResolved(config) {
       builds.delete(buildKey(config));
       const app = await appCompiler(config.root);
-      active = app ?? compiler;
+      active = app?.compiler ?? compiler;
       if (
         options.buildCache !== false &&
-        !app &&
+        (!app || app.fingerprint !== undefined) &&
         config.command === "build" &&
         !config.build.watch
       ) {
@@ -437,6 +447,7 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
             config.mode,
             codeBlockThemes,
             process.versions.node,
+            app?.fingerprint ?? null,
           ]),
         });
       }
