@@ -552,9 +552,40 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// Document fields repeat across queries; normalizing a page's whole content on each query
+// was most of a local search. Keyed by the field's text, so edited pages miss.
+const normalizedSearchFields = createPreparedContentCache<string>(16_384, 16_000_000);
+const urlSearchSegments = createPreparedContentCache<readonly string[]>(16_384, 4_000_000);
+
+function normalizeSearchField(value: string): string {
+  const cached = normalizedSearchFields.get(value);
+  if (cached !== undefined) return cached;
+  const normalized = normalizeSearchPhrase(value);
+  normalizedSearchFields.set(value, normalized, normalized.length);
+  return normalized;
+}
+
+const searchFieldTokens = createPreparedContentCache<readonly string[]>(16_384, 4_000_000);
+
+function tokenizeSearchField(normalized: string): readonly string[] {
+  const cached = searchFieldTokens.get(normalized);
+  if (cached !== undefined) return cached;
+  const tokens = tokenizeSearchQuery(normalized);
+  searchFieldTokens.set(normalized, tokens, normalized.length);
+  return tokens;
+}
+
+function getDocumentUrlSearchSegments(url: string): readonly string[] {
+  const cached = urlSearchSegments.get(url);
+  if (cached !== undefined) return cached;
+  const segments = getUrlSearchSegments(url);
+  urlSearchSegments.set(url, segments, segments.join("").length);
+  return segments;
+}
+
 function literalMatchPriority(query: string, value?: string): number {
   const q = normalizeSearchPhrase(query);
-  const text = normalizeSearchPhrase(value ?? "");
+  const text = normalizeSearchField(value ?? "");
   if (!q || !text) return 0;
   if (text === q) return 2;
 
@@ -2376,18 +2407,16 @@ function analyzeDocsSearchDocument(
   }
 
   const words = tokenizeSearchQuery(q);
-  const title = normalizeSearchPhrase(document.title);
-  const section = document.section ? normalizeSearchPhrase(document.section) : "";
+  const title = normalizeSearchField(document.title);
+  const section = document.section ? normalizeSearchField(document.section) : "";
   const hasDistinctSection = Boolean(section && section !== title);
-  const titleSection = section
-    ? normalizeSearchPhrase(`${document.title} ${document.section}`)
-    : "";
-  const description = document.description ? normalizeSearchPhrase(document.description) : "";
-  const content = normalizeSearchPhrase(document.content);
-  const url = normalizeSearchPhrase(document.url);
-  const urlSegments = getUrlSearchSegments(document.url);
-  const titleTokens = tokenizeSearchQuery(title);
-  const sectionTokens = tokenizeSearchQuery(section);
+  const titleSection = section ? normalizeSearchField(`${document.title} ${document.section}`) : "";
+  const description = document.description ? normalizeSearchField(document.description) : "";
+  const content = normalizeSearchField(document.content);
+  const url = normalizeSearchField(document.url);
+  const urlSegments = getDocumentUrlSearchSegments(document.url);
+  const titleTokens = tokenizeSearchField(title);
+  const sectionTokens = tokenizeSearchField(section);
 
   let score = 0;
   const reasonContributions = explain
