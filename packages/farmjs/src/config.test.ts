@@ -106,7 +106,7 @@ describe("withDocs", () => {
 
     await expect(
       compiler!.configResolved({ root: process.cwd(), command: "build", build: {} }),
-    ).rejects.toThrow("`buildCache: true` cannot be combined with `mdx` plugins");
+    ).rejects.toThrow("`buildCache: true` cannot fingerprint the `mdx` plugins");
   });
 
   it("points the docs page shell at the module named by the shell option", () => {
