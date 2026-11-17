@@ -48,12 +48,6 @@
       "package": "@sveltejs/kit",
       "expires": "2026-12-16",
       "reason": "Patched only in SvelteKit 3.1.1; the 2.x line has no fix as of 2026-11-16 (2.70.4 does not include the linear-time remote form parser). The DoS needs `kit.experimental.remoteFunctions` with `form`, `query`, or `command` remote functions, which nothing in this repository enables. @sveltejs/kit 2.57.1 is a dev dependency of the SvelteKit example and an optional peer of @vercel/analytics through @astrojs/vercel; no published package depends on it. SvelteKit 3 removes `$app/stores`, which @farming-labs/svelte-theme still imports, so the example cannot move to the patched major until the theme supports it. Revisit with SvelteKit 3 support."
-    },
-    {
-      "advisory": "GHSA-3r8g-jcqq-3p5j",
-      "package": "@sveltejs/kit",
-      "expires": "2026-12-17",
-      "reason": "Every SvelteKit 2.x release, including 2.70.4, is in the affected range (>=2.42.0 <=3.1.0); the first fixed releases are 3.1.1 and 3.2.0, and SvelteKit 3 requires Vite 8, TypeScript 6 and @sveltejs/vite-plugin-svelte 7, while this repo is on TypeScript 5.9 and the example on Vite 6 and vite-plugin-svelte 5. The package is used only by examples/sveltekit (and the root override that pins it); the published @farming-labs/svelte packages do not depend on it. The DoS is in parsing form data for a remote-functions `form`, which needs `kit.experimental.remoteFunctions`; the example does not enable remote functions. Revisit with the SvelteKit 3 upgrade."
     }
   ]
 }
