@@ -1,10 +1,10 @@
 import { spawn } from "node:child_process";
 import { constants } from "node:os";
 import path from "node:path";
+import { specifyCommands } from "./specify-commands.js";
 import { resolveSpecify } from "../specify.js";
 
-const usage =
-  "docs spec <list|show|approve|watch|run|github|mcp> [--specs <directory>] [--specify-package <directory>] [Specify options]";
+const usage = `docs spec <${specifyCommands.join("|")}> [--specs <directory>] [--specify-package <directory>] [Specify options]`;
 export function specifyArgs(argv: string[]) {
   const separator = argv.indexOf("--");
   const options = separator === -1 ? argv : argv.slice(0, separator);
@@ -25,8 +25,7 @@ export function specifyArgs(argv: string[]) {
     else forwarded.push(key, value);
   }
   const command = forwarded[0];
-  if (!["list", "show", "approve", "watch", "run", "github", "mcp"].includes(command))
-    throw new Error(usage);
+  if (!specifyCommands.includes(command)) throw new Error(usage);
   if (command !== "watch" && !forwarded.includes("--pages"))
     forwarded.push("--pages", path.posix.join(directory.split(path.sep).join("/"), "pages"));
   if (command !== "github" && command !== "list" && !forwarded.includes("--approved"))

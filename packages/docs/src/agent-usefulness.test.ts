@@ -850,6 +850,31 @@ pnpm exec docs api sdk --source openapi.json --out src/api-client.ts --check
     });
   });
 
+  it("validates Specify subcommands and flags unknown ones", () => {
+    const commands = [
+      "spec list --json",
+      "spec show 'guide#copy' --json",
+      "spec approve",
+      "spec watch --initial",
+      "spec run -- node worker.js",
+      "spec github --repo org/project",
+      "spec mcp",
+      "spec imaginary",
+    ].map((args) => "pnpm exec docs " + args);
+    const report = analyzeAgentUsefulness({
+      rootDir,
+      pages: [page("spec-commands", ["# Specify", "```bash", ...commands, "```"].join("\n"))],
+    });
+
+    expect(report.metrics.commands).toEqual({ total: 8, healthy: 7, unhealthy: 1, unverified: 0 });
+    expect(report.findings.filter((finding) => finding.category === "command")).toEqual([
+      expect.objectContaining({
+        command: "pnpm exec docs spec imaginary",
+        code: "command-cli-unknown",
+      }),
+    ]);
+  });
+
   it("validates common workspace selectors and separates unresolved commands", () => {
     mkdirSync(path.join(rootDir, "packages", "app"), { recursive: true });
     writeFileSync(
