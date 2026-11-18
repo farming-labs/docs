@@ -19,6 +19,7 @@
     "start:mcp-conformance-server": "node scripts/mcp-conformance-server.mjs",
     "test:mcp-conformance-runner": "node --test scripts/mcp-conformance.test.mjs",
     "test:smoke-agent-surfaces": "node --test scripts/smoke-agent-surfaces.test.mjs",
+    "test:specs": "node --test scripts/specify-smoke.test.mjs",
     "test": "pnpm --filter @farming-labs/docs run test",
     "typecheck": "pnpm --filter @farming-labs/docs run build && pnpm --filter './packages/*' run typecheck",
     "release": "bumpp",
