@@ -48,6 +48,12 @@
       "package": "@sveltejs/kit",
       "expires": "2026-12-16",
       "reason": "Patched only in SvelteKit 3.1.1; the 2.x line has no fix as of 2026-11-16 (2.70.4 does not include the linear-time remote form parser). The DoS needs `kit.experimental.remoteFunctions` with `form`, `query`, or `command` remote functions, which nothing in this repository enables. @sveltejs/kit 2.57.1 is a dev dependency of the SvelteKit example and an optional peer of @vercel/analytics through @astrojs/vercel; no published package depends on it. SvelteKit 3 removes `$app/stores`, which @farming-labs/svelte-theme still imports, so the example cannot move to the patched major until the theme supports it. Revisit with SvelteKit 3 support."
+    },
+    {
+      "advisory": "GHSA-fc5q-39xc-vjpf",
+      "package": "picomatch",
+      "expires": "2026-12-03",
+      "reason": "No patched npm release exists as of 2026-11-17; 4.0.7 remains latest. The advisory requires attacker-controlled repeated-extglob patterns. This repository supplies project-controlled patterns to its build, test, and filesystem tooling. Published dependencies also include picomatch through @mdx-js/rollup > @rollup/pluginutils and fumadocs-core > tinyglobby: the former filters MDX inputs using project configuration, and the latter expands <auto-files> patterns from MDX content in remarkMdxFiles, which this repository does not enable. This exception accepts the repository audit finding only; it does not fix picomatch or establish safety for applications compiling untrusted MDX or accepting arbitrary glob patterns. Remove when upstream publishes a patched version."
     }
   ]
 }
