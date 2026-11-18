@@ -387,6 +387,9 @@ importers:
       '@clack/prompts':
         specifier: ^1.7.0
         version: 1.7.0
+      '@farming-labs/inkspan':
+        specifier: https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a
+        version: https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a
       '@modelcontextprotocol/server':
         specifier: 2.3.0
         version: 2.3.0
@@ -1779,6 +1782,11 @@ packages:
   '@farm.js/tunnel@0.1.2':
     resolution: {integrity: sha512-9Rmep2U0eCCWx6zwLb1VAfjbYfsbGtXBsMZusSvYkbCV+3eEcz6+GhfOi7A8gfp7JiAdkiOpmGhmaJnc8wEb1A==}
     engines: {node: '>=20.0.0'}
+
+  '@farming-labs/inkspan@https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a':
+    resolution: {tarball: https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a}
+    version: 0.1.0-beta.0
+    engines: {node: '>=20'}
 
   '@farming-labs/orm-d1@0.0.66':
     resolution: {integrity: sha512-bjjk9fK4BepblqoUM1ONCLf8xnlqD0/JCK13A0+M7F3e2O+/19/37qq3XtN5N0YfgeGZVi+4dSQ4RpnSJzSvRQ==}
@@ -10891,6 +10899,8 @@ snapshots:
       '@farm.js/tunnel-linux-x64-musl': 0.1.2
       '@farm.js/tunnel-win32-arm64-msvc': 0.1.2
       '@farm.js/tunnel-win32-x64-msvc': 0.1.2
+
+  '@farming-labs/inkspan@https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a': {}
 
   '@farming-labs/orm-d1@0.0.66':
     dependencies:

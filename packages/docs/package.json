@@ -114,6 +114,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@farming-labs/inkspan": "https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a",
     "@clack/prompts": "^1.7.0",
     "@modelcontextprotocol/server": "2.3.0",
     "@scalar/core": "^0.4.3",

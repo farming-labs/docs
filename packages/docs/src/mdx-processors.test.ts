@@ -5,6 +5,8 @@ vi.mock("./markdown-parser.js", async (importOriginal) => {
   return { ...actual, createDocsMarkdownParser: vi.fn(actual.createDocsMarkdownParser) };
 });
 
+vi.mock("@farming-labs/inkspan", { spy: true });
+
 beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
@@ -51,41 +53,41 @@ describe("on-demand MDX processors", () => {
     ).toHaveLength(1);
   });
 
-  it("reuses the section parser while keeping heading state local to each document", async () => {
+  it("parses each new source while keeping heading state local to each document", async () => {
     const { parseDocsMarkdownSections } = await import("./markdown-sections.js");
-    const { createDocsMarkdownParser } = await import("./markdown-parser.js");
+    const { parseMarkdownOutline } = await import("@farming-labs/inkspan");
 
-    expect(createDocsMarkdownParser).not.toHaveBeenCalled();
+    expect(parseMarkdownOutline).not.toHaveBeenCalled();
     const first = parseDocsMarkdownSections("# Setup\n\nFirst.\n\n## Setup\n\nMore.");
     const second = parseDocsMarkdownSections("# Setup\n\nSecond.");
 
     expect(first.map((section) => section.anchor)).toEqual(["setup", "setup-1"]);
     expect(second.map((section) => section.anchor)).toEqual(["setup"]);
     expect(second[0].content).toContain("Second.");
-    expect(createDocsMarkdownParser).toHaveBeenCalledTimes(1);
+    expect(parseMarkdownOutline).toHaveBeenCalledTimes(2);
   });
 
   it.each([false, true])(
     "reuses unchanged section results and sees edits (fallback: %s)",
     async (fallback) => {
       const { parseDocsMarkdownSections } = await import("./markdown-sections.js");
-      const { createDocsMarkdownParser } = await import("./markdown-parser.js");
+      const { parseMarkdownOutline } = await import("@farming-labs/inkspan");
       const source = "# Setup\n\nOriginal.\n\n## Setup\n\nMore." + (fallback ? "\n\n{" : "");
       const expected = parseDocsMarkdownSections(source);
-      const processor = vi.mocked(createDocsMarkdownParser).mock.results[0].value;
-      const parse = vi.spyOn(processor, "parse");
+      expect(parseMarkdownOutline).toHaveBeenCalledTimes(1);
+      vi.mocked(parseMarkdownOutline).mockClear();
 
       const again = parseDocsMarkdownSections(source);
       expect(again).toEqual(expected);
       again[0].content = "Caller mutation";
       again.length = 0;
       expect(parseDocsMarkdownSections(source)).toEqual(expected);
-      expect(parse).not.toHaveBeenCalled();
+      expect(parseMarkdownOutline).not.toHaveBeenCalled();
 
       const edited = parseDocsMarkdownSections(source.replace("Original.", "Updated."));
       expect(edited[0].content).toContain("Updated.");
       expect(edited[0].content).not.toContain("Original.");
-      expect(parse).toHaveBeenCalledTimes(1);
+      expect(parseMarkdownOutline).toHaveBeenCalledTimes(1);
       expect(parseDocsMarkdownSections(source)).toEqual(expected);
     },
   );

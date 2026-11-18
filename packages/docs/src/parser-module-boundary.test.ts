@@ -47,11 +47,18 @@ describe("published parse-only entrypoints", () => {
       visit(fileURLToPath(new URL(`../dist/${entry}.mjs`, import.meta.url)));
       expect([...external]).not.toContain("@mdx-js/mdx");
       if (entry === "mdx") {
-        for (const dependency of ["remark-parse", "remark-mdx", "remark-gfm", "unified"]) {
+        for (const dependency of [
+          "remark-parse",
+          "remark-mdx",
+          "remark-gfm",
+          "unified",
+          "@farming-labs/inkspan",
+        ]) {
           expect([...external]).not.toContain(dependency);
         }
       } else {
-        expect([...external]).toContain("remark-parse");
+        expect([...external]).toContain("@farming-labs/inkspan");
+        if (entry !== "markdown-rendering") expect([...external]).toContain("remark-parse");
       }
     },
   );
