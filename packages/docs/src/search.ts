@@ -612,6 +612,40 @@ function tokenizeSearchQuery(query: string): string[] {
   );
 }
 
+interface PreparedDocsSearchQuery {
+  phrase: string;
+  words: string[];
+  literalPhrase: string;
+  literalPattern: RegExp | undefined;
+}
+
+function prepareDocsSearchQuery(query: string): PreparedDocsSearchQuery {
+  const phrase = normalizeSearchPhrase(query);
+  const words = tokenizeSearchQuery(phrase);
+  // Literal matching historically normalizes after whitespace trimming as well.
+  const literalPhrase = normalizeSearchPhrase(phrase);
+  const literalWords = literalPhrase === phrase ? words : tokenizeSearchQuery(literalPhrase);
+  const literal =
+    literalWords.length > 0 && literalWords.length <= 3 && literalWords.join(" ") === literalPhrase;
+  const boundary = "[^\\p{L}\\p{N}]";
+  return {
+    phrase,
+    words,
+    literalPhrase,
+    literalPattern: literal
+      ? new RegExp(`(^|${boundary})${escapeRegExp(literalPhrase)}(?=$|${boundary})`, "u")
+      : undefined,
+  };
+}
+
+function matchNormalizedLiteralField(query: PreparedDocsSearchQuery, value: string): number {
+  if (!query.literalPattern || !value) return 0;
+  // A first pass can expose trailing punctuation when the original field ended in whitespace.
+  const text = "?!.,;:".includes(value.slice(-1)) ? normalizeSearchPhrase(value) : value;
+  if (text === query.literalPhrase) return 2;
+  return query.literalPattern.test(text) ? 1 : 0;
+}
+
 function normalizeUrlRouteKey(value: string): string {
   try {
     const url = new URL(value, "https://docs.local");
@@ -2392,11 +2426,11 @@ interface DocsSearchDocumentAnalysis {
 }
 
 function analyzeDocsSearchDocument(
-  query: string,
+  query: PreparedDocsSearchQuery,
   document: DocsSearchDocument,
   explain = false,
 ): DocsSearchDocumentAnalysis {
-  const q = normalizeSearchPhrase(query);
+  const q = query.phrase;
   if (!q) {
     return {
       score: 0,
@@ -2406,7 +2440,7 @@ function analyzeDocsSearchDocument(
     };
   }
 
-  const words = tokenizeSearchQuery(q);
+  const words = query.words;
   const title = normalizeSearchField(document.title);
   const section = document.section ? normalizeSearchField(document.section) : "";
   const hasDistinctSection = Boolean(section && section !== title);
@@ -2436,11 +2470,11 @@ function analyzeDocsSearchDocument(
     });
   };
   const insideLiteralPriority =
-    document.type !== "page" && hasDistinctSection && isLiteralLookupQuery(q)
+    document.type !== "page" && hasDistinctSection && query.literalPattern
       ? Math.max(
-          literalMatchPriority(q, section),
-          literalMatchPriority(q, description),
-          literalMatchPriority(q, content),
+          matchNormalizedLiteralField(query, section),
+          matchNormalizedLiteralField(query, description),
+          matchNormalizedLiteralField(query, content),
         )
       : 0;
 
@@ -2616,8 +2650,14 @@ function analyzeDocsSearchDocument(
   };
 }
 
-function scoreDocument(query: string, document: DocsSearchDocument): number {
-  return analyzeDocsSearchDocument(query, document).score;
+function scoreDocument(
+  query: string | PreparedDocsSearchQuery,
+  document: DocsSearchDocument,
+): number {
+  return analyzeDocsSearchDocument(
+    typeof query === "string" ? prepareDocsSearchQuery(query) : query,
+    document,
+  ).score;
 }
 
 function getDocsSearchExplanationResultIdentity(result: DocsSearchResult): string {
@@ -2774,6 +2814,7 @@ function explainDocsSearchResults(options: {
   rankOffset: number;
   resolveRankingStrategy: (result: DocsSearchResult) => DocsSearchRankingStrategy;
 }): DocsSearchResult[] {
+  const query = prepareDocsSearchQuery(options.query);
   const documentsById = new Map(options.documents.map((document) => [document.id, document]));
   const documentsByResultKey = new Map(
     options.documents.map((document) => [
@@ -2788,7 +2829,7 @@ function explainDocsSearchResults(options: {
       documentsById,
       documentsByResultKey,
     );
-    const analysis = analyzeDocsSearchDocument(options.query, document, true);
+    const analysis = analyzeDocsSearchDocument(query, document, true);
     const rankingStrategy = options.resolveRankingStrategy(result);
     const rankingReasons =
       rankingStrategy === "provider"
@@ -2975,10 +3016,11 @@ async function searchSimpleDocsPage(
 ): Promise<DocsSearchAdapterPage> {
   const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
   const offset = query.offset ?? 0;
+  const preparedQuery = prepareDocsSearchQuery(query.query);
   const matches = context.documents
     .map((document) => ({
       document,
-      score: scoreDocument(query.query, document),
+      score: scoreDocument(preparedQuery, document),
     }))
     .filter((item) => item.score > 0)
     .sort((a, b) => {
