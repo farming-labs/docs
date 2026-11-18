@@ -237,12 +237,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:23875290a8a160cd",
+      "sourceHash": "fnv1a64:d4f083e5bde24a80",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:61c4d9dd6a9c9854",
-      "reviewedAt": "2026-11-15T00:52:58.134Z",
+      "outputHash": "fnv1a64:64ee5b0970a339e3",
+      "reviewedAt": "2026-11-18T21:39:56.951Z",
       "reviewedBy": "Claude",
-      "reason": "Compared the only source change: the new audience row in the page frontmatter table. Added a matching 'Page audience frontmatter' section to the curated reference, pointing to the guide for the full surface list."
+      "reason": "Compared the only source change: the new 'Highlighted code in Next.js' section on the reference page. Added a matching paragraph to the curated reference, covering the cache location, what the keys cover, the languages and slow blocks that are never stored, that a custom mdx.codeHighlighter replaces the cache, and the 16,384-block bound."
     },
     {
       "route": "/docs/themes",
