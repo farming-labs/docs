@@ -10,8 +10,8 @@ From the repository root, with Node 22.6 or later and access to the Specify repo
 
 ```sh
 gh repo clone assistant-ui/specify specs/.tools/specify
-git -C specs/.tools/specify fetch origin bf916cdabf4c1c0f44b0f2afa3e521e148868252
-git -C specs/.tools/specify checkout --detach bf916cdabf4c1c0f44b0f2afa3e521e148868252
+git -C specs/.tools/specify fetch origin 5e54e51c4e286188410790ab3072051092bcccc5
+git -C specs/.tools/specify checkout --detach 5e54e51c4e286188410790ab3072051092bcccc5
 ```
 
 The pilot pins the [Specify approval stream change](https://github.com/assistant-ui/specify/pull/5)
