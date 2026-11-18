@@ -48,6 +48,11 @@ the draft-PR tool still requires explicit confirmation, a matching branch prefix
 files, and authenticated `gh`. Never forward this server through the public MCP aliases. Use local
 stdio or place `createDocsAuthoringMcpServer()` behind an authoring-scoped OAuth transport.
 
+To include local maintainer specs, pass `--specs specs` to `docs mcp author`. Enable
+`--allow-spec-proposals` only on a writable authoring connection. Use `docs spec list --json`
+and `docs spec show <key> --json` to inspect the same project from a terminal. Both paths
+resolve the project's Specify installation or a trusted built `--specify-package` directory.
+
 ## Hosted MCP client setup
 
 Generate a direct Streamable HTTP client entry:
