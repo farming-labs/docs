@@ -101,6 +101,9 @@ jobs:
       - name: Run Fumadocs theme tests
         run: pnpm --filter @farming-labs/theme test
 
+      - name: Run maintainer spec smoke test
+        run: pnpm test:specs
+
       - name: Test deployed agent surface smoke validator
         run: pnpm test:smoke-agent-surfaces
 
