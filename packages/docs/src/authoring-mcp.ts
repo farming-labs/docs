@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import type { DocsSpecifyOptions } from "./specify.js";
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
@@ -520,6 +521,15 @@ export async function createDocsAuthoringMcpServer(
   return server;
 }
 
-export async function runDocsAuthoringMcpStdio(options: DocsAuthoringMcpOptions): Promise<void> {
-  await serveStdio(() => createDocsAuthoringMcpServer(options));
+export async function runDocsAuthoringMcpStdio(
+  options: DocsAuthoringMcpOptions & { specify?: DocsSpecifyOptions },
+): Promise<void> {
+  serveStdio(async ({ era }) => {
+    const server = await createDocsAuthoringMcpServer(options);
+    if (options.specify) {
+      const { mountSpecify } = await import("./specify.js");
+      await mountSpecify(server, path.resolve(options.rootDir), options.specify, era);
+    }
+    return server;
+  });
 }

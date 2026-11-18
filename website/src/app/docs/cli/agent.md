@@ -48,6 +48,8 @@ configuration, then rerun `--plan` before executing validation again.
   diagnostics, and `review --ci` for changed documentation.
 - Use `openapi diff <baseline> <current>` to reject breaking API changes; add `--json` for CI.
 - Use `openapi sdk <source> --output <path>` to generate a typed client; use `--check` in CI.
+- With a local Specify installation, use `spec list --json` and `spec show <key> --json` to read the proposed and approved wording. Start `spec run -- <worker>` before owner approval to receive assignments on stdin.
+- Use `mcp author --specs specs` for private approval subscriptions. Add `--allow-spec-proposals` to let agents propose wording.
 - Use `mcp` for local stdio clients; hosted clients should connect to the configured HTTP route.
 
 For a published release use `pnpm dlx @farming-labs/docs <command>`; use `pnpm exec docs <command>` only after installing dependencies. For non-interactive scaffold: `init --template <framework> --name <dir>`; omit `--name` to be prompted. Plain `init` asks whether to modify the current app or create a fresh project.

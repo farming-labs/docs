@@ -195,6 +195,23 @@ Use `upgrade` when docs are already installed and you just want newer package ve
 
 By default, the CLI detects your framework and package manager from the current project. If detection is ambiguous, pass `--framework`.
 
+### Work with private maintainer specs
+
+Use `docs spec` from a project with a local [Specify](https://github.com/assistant-ui/specify) installation. It looks for MDX proposals under `specs/pages` and approvals in `specs/specs.approved.json`. Pass `--specs <directory>` for another layout root or `--approved <file>` for a separate approval source. A project with access to a built source checkout can use `--specify-package <package-directory>`.
+
+```bash
+pnpm exec docs spec list --json
+pnpm exec docs spec show 'guide#copy' --json
+# Leave the runner open in this terminal.
+pnpm exec docs spec run -- node -e "process.stdin.pipe(process.stdout)"
+# Review the wording in a second terminal.
+pnpm exec docs spec approve
+```
+
+Start the runner before approving to receive the next change. The example worker prints the task. Replace it with your chosen worker for automatic assignment. `docs spec github` starts Specify's signed webhook receiver for owner-reviewed spec PRs. `docs spec mcp` starts the standalone Specify server.
+
+To expose the same approval resources beside the framework's authoring tools, start `docs mcp author --specs specs`. Add `--allow-spec-proposals` for revision-checked writes or `--spec-approved <file>` for a GitHub receiver's approved snapshot. Clients subscribe to an approved resource, read it and fetch it again on `notifications/resources/updated`. This integration runs on private stdio.
+
 ### Run the built-in MCP server locally
 
 Use `mcp` when you want to expose the current docs project to a local MCP client over stdio.

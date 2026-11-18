@@ -7,6 +7,7 @@ import {
   normalizeAgentFramework,
   normalizeAgentVersion,
 } from "./agent-scope.js";
+import { specifyCommands } from "./cli/specify-commands.js";
 import { extractCodeBlocksFromMarkdown } from "./code-blocks.js";
 import {
   findDocsAudienceMdxTags,
@@ -245,6 +246,7 @@ const DEFAULT_DOCS_COMMANDS = [
   "cloud deploy",
   "cloud preview",
   "mcp",
+  ...specifyCommands.map((command) => "spec " + command),
   "skills scaffold",
   "agent compact",
   "agent export",

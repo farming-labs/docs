@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import type { DocsSpecifyOptions } from "../specify.js";
 import { runDocsAuthoringMcpStdio } from "../authoring-mcp.js";
 import {
   loadDocsConfigModuleResult,
@@ -10,6 +11,7 @@ import {
 } from "./config.js";
 
 export interface RunAuthoringMcpOptions {
+  specify?: DocsSpecifyOptions;
   configPath?: string;
   allowPublish?: boolean;
   branchPrefix?: string;
@@ -30,6 +32,7 @@ export async function runAuthoringMcp(options: RunAuthoringMcpOptions = {}): Pro
   if (!cliPath) throw new Error("Could not resolve the docs CLI executable for doctor checks.");
 
   await runDocsAuthoringMcpStdio({
+    specify: options.specify,
     rootDir,
     entry,
     contentDir,
