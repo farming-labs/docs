@@ -476,7 +476,7 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
     {
       name: "farming-labs-farmjs-workspace-alias",
       enforce: "pre",
-      config() {
+      config(_config, { command }) {
         return {
           ...(aliases.length > 0 ? { resolve: { alias: aliases } } : {}),
           server: {
@@ -485,7 +485,13 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
             },
           },
           ssr: {
-            noExternal: ["@farming-labs/docs", "@farming-labs/theme"],
+            // The dev server loads `@farming-labs/docs` in Node, like any other package: it has
+            // no stylesheets or bundler-only syntax, so running its modules through Vite's SSR
+            // transform only slows the first page. Builds still bundle it.
+            noExternal:
+              command === "serve"
+                ? ["@farming-labs/theme"]
+                : ["@farming-labs/docs", "@farming-labs/theme"],
           },
         };
       },
