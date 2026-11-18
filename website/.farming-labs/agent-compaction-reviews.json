@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:ffccbb54225a84fb",
+      "sourceHash": "fnv1a64:feb009be157799d6",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:cef9d98e2cecfbee",
-      "reviewedAt": "2026-11-18T03:59:13.243Z",
-      "reviewedBy": "Codex",
-      "reason": "Compared the CLI source with its previous review. The curated guide now covers reading proposals and approvals, starting an assigned worker before approval, and subscribing or proposing through private authoring MCP. Compaction settings and existing CLI guidance are preserved."
+      "outputHash": "fnv1a64:30fed57a2a217de1",
+      "reviewedAt": "2026-11-18T18:49:54.976Z",
+      "reviewedBy": "Claude",
+      "reason": "Compared the CLI source with its previous review. The Specify section now says to install @assistant-ui/specify from npm, and the curated guide names that dev dependency. --specify-package stays documented for unreleased builds. Other CLI guidance and compaction settings are unchanged."
     },
     {
       "route": "/docs/cloud",
