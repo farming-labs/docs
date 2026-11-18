@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:12a214c65948c127",
+      "sourceHash": "fnv1a64:ffccbb54225a84fb",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:0f8b971a8dd34e04",
-      "reviewedAt": "2026-11-03T01:52:24.130Z",
+      "outputHash": "fnv1a64:cef9d98e2cecfbee",
+      "reviewedAt": "2026-11-18T03:59:13.243Z",
       "reviewedBy": "Codex",
-      "reason": "Compared the source changes since the prior review: typed OpenAPI SDK generation is already retained in the curated CLI commands, workflow, and freshness instructions. Added Farm.js applicability; preserved command planning and execution safeguards."
+      "reason": "Compared the CLI source with its previous review. The curated guide now covers reading proposals and approvals, starting an assigned worker before approval, and subscribing or proposing through private authoring MCP. Compaction settings and existing CLI guidance are preserved."
     },
     {
       "route": "/docs/cloud",
