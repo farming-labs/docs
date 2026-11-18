@@ -3071,7 +3071,17 @@ export function withDocs(
     "@farming-labs/next/mdx-plugins/rehype-toc",
     mdx.codeHighlighter ?? [
       "@farming-labs/next/mdx-plugins/rehype-code",
-      { themes: codeBlockThemes },
+      {
+        themes: codeBlockThemes,
+        // Next keeps `<distDir>/cache` between builds, and hosts such as Vercel restore it.
+        cacheDir: join(
+          root,
+          typeof nextConfig.distDir === "string" ? nextConfig.distDir : ".next",
+          "cache",
+          "farming-labs",
+          "code-highlight",
+        ),
+      },
     ],
     ...mdx.rehypePlugins,
   ];

@@ -10,19 +10,15 @@ Verify the integration against the installed CLI, a real MCP client, a private s
 
 ## Set up the pilot
 
-From the docs repository root, use Node 22.13 or later and an account with access to the Specify repository:
+From the docs repository root, use Node 22.13 or later:
 
 ```sh
 pnpm install --frozen-lockfile
-gh repo clone assistant-ui/specify specs/.tools/specify
-git -C specs/.tools/specify fetch origin 173d49c6a7cd7ff5a3c298d2e6aeb61b3e95ed64
-git -C specs/.tools/specify checkout --detach 173d49c6a7cd7ff5a3c298d2e6aeb61b3e95ed64
-(cd specs/.tools/specify && pnpm --filter @assistant-ui/specify install --frozen-lockfile --ignore-scripts && pnpm --filter @assistant-ui/specify build)
 pnpm --filter @farming-labs/docs build
 pnpm --silent run specs show 'customization/page-actions#copy-markdown' --json
 ```
 
-The ignored checkout pins the merged upstream [runner](https://github.com/assistant-ui/specify/pull/6), [GitHub receiver](https://github.com/assistant-ui/specify/pull/7), [MCP transport](https://github.com/assistant-ui/specify/pull/8) and [browser adapter](https://github.com/assistant-ui/specify/pull/9).
+The root workspace pins [`@assistant-ui/specify`](https://www.npmjs.com/package/@assistant-ui/specify) `0.1.0` as a dev dependency. That release includes the upstream [runner](https://github.com/assistant-ui/specify/pull/6), [GitHub receiver](https://github.com/assistant-ui/specify/pull/7), [MCP transport](https://github.com/assistant-ui/specify/pull/8) and [browser adapter](https://github.com/assistant-ui/specify/pull/9). To test an unreleased Specify build, pass `--specify-package <built-package-directory>` to `docs spec` or `docs mcp author`.
 
 ## From writing to assignment
 

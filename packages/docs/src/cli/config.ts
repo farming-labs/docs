@@ -464,6 +464,15 @@ function resolveDocsConfigTsconfigPath(rootDir: string, configPath: string): str
 }
 
 /**
+ * Where docs.config and its imports stay transpiled between runs. jiti checks each entry against
+ * the file's source, so an edit is transpiled again. The directory is this loader's own because
+ * jiti's key leaves out options such as the JSX runtime, which other jiti users set differently.
+ */
+function resolveDocsConfigTranspileCacheDir(rootDir: string): string {
+  return join(resolve(rootDir), "node_modules", ".cache", "farming-labs-docs", "jiti");
+}
+
+/**
  * Load docs.config with an explicit confidence signal for diagnostics.
  * Existing callers can keep using `loadDocsConfigModule`, which preserves the
  * previous evaluated-config-or-null contract.
@@ -479,7 +488,7 @@ export async function loadDocsConfigModuleResult(
     const { createJiti } = await import("jiti");
     const jiti = createJiti(import.meta.url, {
       moduleCache: false,
-      fsCache: false,
+      fsCache: resolveDocsConfigTranspileCacheDir(rootDir),
       interopDefault: false,
       jsx: {
         runtime: "automatic",

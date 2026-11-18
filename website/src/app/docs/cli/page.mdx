@@ -197,9 +197,10 @@ By default, the CLI detects your framework and package manager from the current 
 
 ### Work with private maintainer specs
 
-Use `docs spec` from a project with a local [Specify](https://github.com/assistant-ui/specify) installation. It looks for MDX proposals under `specs/pages` and approvals in `specs/specs.approved.json`. Pass `--specs <directory>` for another layout root or `--approved <file>` for a separate approval source. A project with access to a built source checkout can use `--specify-package <package-directory>`.
+Install [Specify](https://www.npmjs.com/package/@assistant-ui/specify) as a dev dependency, then use `docs spec` from that project. It looks for MDX proposals under `specs/pages` and approvals in `specs/specs.approved.json`. Pass `--specs <directory>` for another layout root or `--approved <file>` for a separate approval source. To test an unreleased Specify build, pass `--specify-package <built-package-directory>`.
 
 ```bash
+pnpm add -D @assistant-ui/specify
 pnpm exec docs spec list --json
 pnpm exec docs spec show 'guide#copy' --json
 # Leave the runner open in this terminal.

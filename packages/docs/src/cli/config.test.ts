@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it } from "vitest";
@@ -361,6 +361,32 @@ export default {
         },
       },
     });
+  });
+
+  it("keeps the transpiled config between loads and transpiles an edit again", async () => {
+    const rootDir = mkdtempSync(join(tmpdir(), "docs-config-loader-"));
+    tempDirs.push(rootDir);
+    const configPath = join(rootDir, "docs.config.tsx");
+    const cacheDir = join(rootDir, "node_modules", ".cache", "farming-labs-docs", "jiti");
+    const load = async () => {
+      const result = await loadDocsConfigModuleResult(rootDir, undefined, { silent: true });
+      expect(result.status).toBe("evaluated");
+      return (result as { config: { nav: { title: { props: { children: string } } } } }).config.nav
+        .title.props.children;
+    };
+    const cached = () =>
+      readdirSync(cacheDir).map((file) => readFileSync(join(cacheDir, file), "utf-8"));
+
+    writeFileSync(configPath, "export default { nav: { title: <span>First</span> } };\n", "utf-8");
+    await expect(load()).resolves.toBe("First");
+    const transpiled = cached();
+    expect(transpiled).toHaveLength(1);
+    await expect(load()).resolves.toBe("First");
+    expect(cached()).toEqual(transpiled);
+
+    writeFileSync(configPath, "export default { nav: { title: <span>Second</span> } };\n", "utf-8");
+    await expect(load()).resolves.toBe("Second");
+    expect(cached()).not.toEqual(transpiled);
   });
 
   it.each([

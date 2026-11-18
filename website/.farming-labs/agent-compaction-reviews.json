@@ -12,12 +12,12 @@
     },
     {
       "route": "/docs/cli",
-      "sourceHash": "fnv1a64:ffccbb54225a84fb",
+      "sourceHash": "fnv1a64:feb009be157799d6",
       "settingsHash": "fnv1a64:e50e89e221226fc3",
-      "outputHash": "fnv1a64:cef9d98e2cecfbee",
-      "reviewedAt": "2026-11-18T03:59:13.243Z",
-      "reviewedBy": "Codex",
-      "reason": "Compared the CLI source with its previous review. The curated guide now covers reading proposals and approvals, starting an assigned worker before approval, and subscribing or proposing through private authoring MCP. Compaction settings and existing CLI guidance are preserved."
+      "outputHash": "fnv1a64:30fed57a2a217de1",
+      "reviewedAt": "2026-11-18T18:49:54.976Z",
+      "reviewedBy": "Claude",
+      "reason": "Compared the CLI source with its previous review. The Specify section now says to install @assistant-ui/specify from npm, and the curated guide names that dev dependency. --specify-package stays documented for unreleased builds. Other CLI guidance and compaction settings are unchanged."
     },
     {
       "route": "/docs/cloud",
@@ -237,12 +237,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:23875290a8a160cd",
+      "sourceHash": "fnv1a64:b6f6ae6d0f359e1c",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:61c4d9dd6a9c9854",
-      "reviewedAt": "2026-11-15T00:52:58.134Z",
-      "reviewedBy": "Claude",
-      "reason": "Compared the only source change: the new audience row in the page frontmatter table. Added a matching 'Page audience frontmatter' section to the curated reference, pointing to the guide for the full surface list."
+      "outputHash": "fnv1a64:f3547eab37003a25",
+      "reviewedAt": "2026-11-18T22:15:06.571Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the updated reference and its agent version for isolated grammars, embedded language support, cache eligibility and the configurable tokenization limit."
     },
     {
       "route": "/docs/themes",

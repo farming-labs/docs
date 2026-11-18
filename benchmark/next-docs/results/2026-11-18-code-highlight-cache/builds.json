@@ -1,0 +1,856 @@
+{
+  "runId": "code-highlight-2026-11-18",
+  "commit": "403ddb6c0f1164619a14a26fdc6ac4e88d1f1077",
+  "node": "v24.21.0",
+  "processor": "Apple M1",
+  "logicalCpus": 8,
+  "arguments": {
+    "node": "node",
+    "pages": 100,
+    "rounds": 9,
+    "run_id": "code-highlight-2026-11-18",
+    "min_free_gib": 1.5
+  },
+  "rows": [
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 8.98,
+      "wallSeconds": 10.942,
+      "compileSeconds": 6.7,
+      "peakTreeRssMiB": 3065,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9573,
+      "highlightEntries": 0,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 8.06,
+      "wallSeconds": 11.986,
+      "compileSeconds": 7.6,
+      "peakTreeRssMiB": 2784,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9199,
+      "highlightEntries": 0,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 8.18,
+      "wallSeconds": 12.709,
+      "compileSeconds": 8.2,
+      "peakTreeRssMiB": 2643,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10139,
+      "highlightEntries": 200,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 8.53,
+      "wallSeconds": 10.732,
+      "compileSeconds": 6.0,
+      "peakTreeRssMiB": 2750,
+      "mdxFiles": 100,
+      "mdxCpuMs": 5096,
+      "highlightEntries": 200,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 9.25,
+      "wallSeconds": 8.009,
+      "compileSeconds": 2.6,
+      "peakTreeRssMiB": 1565,
+      "mdxFiles": 1,
+      "mdxCpuMs": 659,
+      "highlightEntries": 0,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 9.09,
+      "wallSeconds": 4.73,
+      "compileSeconds": 0.988,
+      "peakTreeRssMiB": 1586,
+      "mdxFiles": 1,
+      "mdxCpuMs": 613,
+      "highlightEntries": 0,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 8.68,
+      "wallSeconds": 6.315,
+      "compileSeconds": 2.2,
+      "peakTreeRssMiB": 1626,
+      "mdxFiles": 1,
+      "mdxCpuMs": 271,
+      "highlightEntries": 200,
+      "round": 0,
+      "warmup": true
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 8.31,
+      "wallSeconds": 13.109,
+      "compileSeconds": 8.4,
+      "peakTreeRssMiB": 2898,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10214,
+      "highlightEntries": 0,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 7.63,
+      "wallSeconds": 12.965,
+      "compileSeconds": 7.4,
+      "peakTreeRssMiB": 2809,
+      "mdxFiles": 100,
+      "mdxCpuMs": 5460,
+      "highlightEntries": 200,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 7.39,
+      "wallSeconds": 11.508,
+      "compileSeconds": 7.1,
+      "peakTreeRssMiB": 3168,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10824,
+      "highlightEntries": 200,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 7.79,
+      "wallSeconds": 10.306,
+      "compileSeconds": 6.3,
+      "peakTreeRssMiB": 3366,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9343,
+      "highlightEntries": 0,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 7.14,
+      "wallSeconds": 4.506,
+      "compileSeconds": 0.974,
+      "peakTreeRssMiB": 1707,
+      "mdxFiles": 1,
+      "mdxCpuMs": 524,
+      "highlightEntries": 0,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 9.29,
+      "wallSeconds": 5.401,
+      "compileSeconds": 2.0,
+      "peakTreeRssMiB": 1580,
+      "mdxFiles": 1,
+      "mdxCpuMs": 273,
+      "highlightEntries": 200,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 9.26,
+      "wallSeconds": 3.973,
+      "compileSeconds": 0.84,
+      "peakTreeRssMiB": 1540,
+      "mdxFiles": 1,
+      "mdxCpuMs": 553,
+      "highlightEntries": 0,
+      "round": 1,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 9.0,
+      "wallSeconds": 10.366,
+      "compileSeconds": 6.5,
+      "peakTreeRssMiB": 3053,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10241,
+      "highlightEntries": 200,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 8.24,
+      "wallSeconds": 9.31,
+      "compileSeconds": 5.5,
+      "peakTreeRssMiB": 3054,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4972,
+      "highlightEntries": 200,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 8.11,
+      "wallSeconds": 10.498,
+      "compileSeconds": 6.3,
+      "peakTreeRssMiB": 3304,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9327,
+      "highlightEntries": 0,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 9.34,
+      "wallSeconds": 11.071,
+      "compileSeconds": 6.1,
+      "peakTreeRssMiB": 3432,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9867,
+      "highlightEntries": 0,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 10.02,
+      "wallSeconds": 5.775,
+      "compileSeconds": 2.2,
+      "peakTreeRssMiB": 1659,
+      "mdxFiles": 1,
+      "mdxCpuMs": 223,
+      "highlightEntries": 200,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 9.78,
+      "wallSeconds": 4.215,
+      "compileSeconds": 0.893,
+      "peakTreeRssMiB": 1716,
+      "mdxFiles": 1,
+      "mdxCpuMs": 540,
+      "highlightEntries": 0,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 9.23,
+      "wallSeconds": 4.217,
+      "compileSeconds": 0.85,
+      "peakTreeRssMiB": 1555,
+      "mdxFiles": 1,
+      "mdxCpuMs": 530,
+      "highlightEntries": 0,
+      "round": 2,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 8.73,
+      "wallSeconds": 10.454,
+      "compileSeconds": 6.1,
+      "peakTreeRssMiB": 3122,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10049,
+      "highlightEntries": 200,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 9.25,
+      "wallSeconds": 10.995,
+      "compileSeconds": 6.6,
+      "peakTreeRssMiB": 3452,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9841,
+      "highlightEntries": 0,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 8.8,
+      "wallSeconds": 11.712,
+      "compileSeconds": 7.6,
+      "peakTreeRssMiB": 3324,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9645,
+      "highlightEntries": 0,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 9.9,
+      "wallSeconds": 11.253,
+      "compileSeconds": 6.5,
+      "peakTreeRssMiB": 3161,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4962,
+      "highlightEntries": 200,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 9.52,
+      "wallSeconds": 4.749,
+      "compileSeconds": 0.9440000000000001,
+      "peakTreeRssMiB": 1613,
+      "mdxFiles": 1,
+      "mdxCpuMs": 277,
+      "highlightEntries": 200,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 9.0,
+      "wallSeconds": 6.748,
+      "compileSeconds": 2.8,
+      "peakTreeRssMiB": 1656,
+      "mdxFiles": 1,
+      "mdxCpuMs": 589,
+      "highlightEntries": 0,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 8.6,
+      "wallSeconds": 4.715,
+      "compileSeconds": 0.998,
+      "peakTreeRssMiB": 1621,
+      "mdxFiles": 1,
+      "mdxCpuMs": 617,
+      "highlightEntries": 0,
+      "round": 3,
+      "warmup": false
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 9.51,
+      "wallSeconds": 9.955,
+      "compileSeconds": 6.1,
+      "peakTreeRssMiB": 3487,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9768,
+      "highlightEntries": 0,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 9.17,
+      "wallSeconds": 10.576,
+      "compileSeconds": 6.3,
+      "peakTreeRssMiB": 3358,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10489,
+      "highlightEntries": 0,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 8.81,
+      "wallSeconds": 16.263,
+      "compileSeconds": 10.4,
+      "peakTreeRssMiB": 2639,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10790,
+      "highlightEntries": 200,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 15.27,
+      "wallSeconds": 12.925,
+      "compileSeconds": 7.6,
+      "peakTreeRssMiB": 2756,
+      "mdxFiles": 100,
+      "mdxCpuMs": 5544,
+      "highlightEntries": 200,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 14.01,
+      "wallSeconds": 7.171,
+      "compileSeconds": 2.3,
+      "peakTreeRssMiB": 1687,
+      "mdxFiles": 1,
+      "mdxCpuMs": 654,
+      "highlightEntries": 0,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 13.69,
+      "wallSeconds": 5.86,
+      "compileSeconds": 0.927,
+      "peakTreeRssMiB": 1597,
+      "mdxFiles": 1,
+      "mdxCpuMs": 306,
+      "highlightEntries": 200,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 12.59,
+      "wallSeconds": 4.795,
+      "compileSeconds": 1.07,
+      "peakTreeRssMiB": 1594,
+      "mdxFiles": 1,
+      "mdxCpuMs": 639,
+      "highlightEntries": 0,
+      "round": 4,
+      "warmup": false
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 12.07,
+      "wallSeconds": 10.519,
+      "compileSeconds": 6.3,
+      "peakTreeRssMiB": 3060,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9397,
+      "highlightEntries": 0,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 11.15,
+      "wallSeconds": 12.286,
+      "compileSeconds": 7.3,
+      "peakTreeRssMiB": 2627,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4815,
+      "highlightEntries": 200,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 11.54,
+      "wallSeconds": 13.527,
+      "compileSeconds": 8.7,
+      "peakTreeRssMiB": 2704,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10705,
+      "highlightEntries": 200,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 11.53,
+      "wallSeconds": 12.675,
+      "compileSeconds": 7.9,
+      "peakTreeRssMiB": 2911,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9696,
+      "highlightEntries": 0,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 15.85,
+      "wallSeconds": 6.042,
+      "compileSeconds": 1.149,
+      "peakTreeRssMiB": 1699,
+      "mdxFiles": 1,
+      "mdxCpuMs": 602,
+      "highlightEntries": 0,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 15.14,
+      "wallSeconds": 5.251,
+      "compileSeconds": 1.046,
+      "peakTreeRssMiB": 1570,
+      "mdxFiles": 1,
+      "mdxCpuMs": 692,
+      "highlightEntries": 0,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 15.55,
+      "wallSeconds": 8.759,
+      "compileSeconds": 2.5,
+      "peakTreeRssMiB": 1276,
+      "mdxFiles": 1,
+      "mdxCpuMs": 301,
+      "highlightEntries": 200,
+      "round": 5,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 15.03,
+      "wallSeconds": 15.751,
+      "compileSeconds": 11.0,
+      "peakTreeRssMiB": 2108,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10149,
+      "highlightEntries": 200,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 17.89,
+      "wallSeconds": 14.064,
+      "compileSeconds": 8.3,
+      "peakTreeRssMiB": 2314,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4839,
+      "highlightEntries": 200,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 18.16,
+      "wallSeconds": 15.51,
+      "compileSeconds": 10.2,
+      "peakTreeRssMiB": 2426,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9217,
+      "highlightEntries": 0,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 18.53,
+      "wallSeconds": 15.342,
+      "compileSeconds": 10.1,
+      "peakTreeRssMiB": 2471,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9545,
+      "highlightEntries": 0,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 24.96,
+      "wallSeconds": 5.8,
+      "compileSeconds": 1.482,
+      "peakTreeRssMiB": 1769,
+      "mdxFiles": 1,
+      "mdxCpuMs": 601,
+      "highlightEntries": 0,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 23.93,
+      "wallSeconds": 4.892,
+      "compileSeconds": 1.216,
+      "peakTreeRssMiB": 1599,
+      "mdxFiles": 1,
+      "mdxCpuMs": 579,
+      "highlightEntries": 0,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 22.57,
+      "wallSeconds": 6.75,
+      "compileSeconds": 2.1,
+      "peakTreeRssMiB": 1398,
+      "mdxFiles": 1,
+      "mdxCpuMs": 252,
+      "highlightEntries": 200,
+      "round": 6,
+      "warmup": false
+    },
+    {
+      "label": "cand-cold",
+      "loadAvg1mAtStart": 21.0,
+      "wallSeconds": 13.457,
+      "compileSeconds": 8.3,
+      "peakTreeRssMiB": 2469,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10262,
+      "highlightEntries": 200,
+      "round": 7,
+      "warmup": false
+    },
+    {
+      "label": "base-cold-aa",
+      "loadAvg1mAtStart": 18.66,
+      "wallSeconds": 11.875,
+      "compileSeconds": 7.4,
+      "peakTreeRssMiB": 3040,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9996,
+      "highlightEntries": 0,
+      "round": 7,
+      "warmup": false
+    },
+    {
+      "label": "base-cold",
+      "loadAvg1mAtStart": 22.7,
+      "wallSeconds": 16.855,
+      "compileSeconds": 10.0,
+      "peakTreeRssMiB": 2294,
+      "mdxFiles": 100,
+      "mdxCpuMs": 10193,
+      "highlightEntries": 0,
+      "round": 7,
+      "warmup": false
+    },
+    {
+      "label": "cand-kept",
+      "loadAvg1mAtStart": 20.9,
+      "wallSeconds": 16.321,
+      "compileSeconds": 9.8,
+      "peakTreeRssMiB": 2285,
+      "mdxFiles": 100,
+      "mdxCpuMs": 6346,
+      "highlightEntries": 200,
+      "round": 7,
+      "warmup": false
+    },
+    {
+      "label": "base-edit",
+      "loadAvg1mAtStart": 26.09,
+      "wallSeconds": 7.388,
+      "compileSeconds": 2.3,
+      "peakTreeRssMiB": 1690,
+      "mdxFiles": 1,
+      "mdxCpuMs": 643,
+      "highlightEntries": 0,
+      "round": 7,
+      "warmup": false
+    },
+    {
+      "label": "cand-edit",
+      "loadAvg1mAtStart": 22.71,
+      "wallSeconds": 6.574,
+      "compileSeconds": 2.3,
+      "peakTreeRssMiB": 1614,
+      "mdxFiles": 1,
+      "mdxCpuMs": 273,
+      "highlightEntries": 200,
+      "round": 7,
+      "warmup": false
+    },
+    {
+      "label": "base-edit-aa",
+      "loadAvg1mAtStart": 21.37,
+      "wallSeconds": 4.457,
+      "compileSeconds": 1.048,
+      "peakTreeRssMiB": 1622,
+      "mdxFiles": 1,
+      "mdxCpuMs": 546,
+      "highlightEntries": 0,
+      "round": 7,
+      "warmup": false
+    }
+  ],
+  "primed": {
+    "entries": 200,
+    "bytes": 1431560
+  },
+  "stopped": "The disk guard stopped the run before the fourth build of round 8 with 1.0 GiB free. Rounds 0-7 are complete; round 0 is the warmup.",
+  "summary": {
+    "base-cold": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 11.712,
+        "min": 9.955,
+        "max": 16.855
+      },
+      "compileSeconds": {
+        "median": 7.6,
+        "min": 6.1,
+        "max": 10.2
+      },
+      "mdxCpuMs": {
+        "median": 9645,
+        "min": 9217,
+        "max": 10214
+      },
+      "mdxFiles": {
+        "median": 100,
+        "min": 100,
+        "max": 100
+      }
+    },
+    "base-cold-aa": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 11.071,
+        "min": 10.306,
+        "max": 15.342
+      },
+      "compileSeconds": {
+        "median": 6.6,
+        "min": 6.1,
+        "max": 10.1
+      },
+      "mdxCpuMs": {
+        "median": 9841,
+        "min": 9343,
+        "max": 10489
+      },
+      "mdxFiles": {
+        "median": 100,
+        "min": 100,
+        "max": 100
+      }
+    },
+    "cand-cold": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 13.457,
+        "min": 10.366,
+        "max": 16.263
+      },
+      "compileSeconds": {
+        "median": 8.3,
+        "min": 6.1,
+        "max": 11.0
+      },
+      "mdxCpuMs": {
+        "median": 10262,
+        "min": 10049,
+        "max": 10824
+      },
+      "mdxFiles": {
+        "median": 100,
+        "min": 100,
+        "max": 100
+      }
+    },
+    "cand-kept": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 12.925,
+        "min": 9.31,
+        "max": 16.321
+      },
+      "compileSeconds": {
+        "median": 7.4,
+        "min": 5.5,
+        "max": 9.8
+      },
+      "mdxCpuMs": {
+        "median": 4972,
+        "min": 4815,
+        "max": 6346
+      },
+      "mdxFiles": {
+        "median": 100,
+        "min": 100,
+        "max": 100
+      }
+    },
+    "base-edit": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 4.795,
+        "min": 4.215,
+        "max": 7.388
+      },
+      "compileSeconds": {
+        "median": 1.046,
+        "min": 0.893,
+        "max": 2.3
+      },
+      "mdxCpuMs": {
+        "median": 617,
+        "min": 524,
+        "max": 692
+      },
+      "mdxFiles": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "base-edit-aa": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 4.892,
+        "min": 3.973,
+        "max": 7.171
+      },
+      "compileSeconds": {
+        "median": 1.149,
+        "min": 0.84,
+        "max": 2.8
+      },
+      "mdxCpuMs": {
+        "median": 579,
+        "min": 530,
+        "max": 654
+      },
+      "mdxFiles": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "cand-edit": {
+      "n": 7,
+      "wallSeconds": {
+        "median": 5.86,
+        "min": 4.749,
+        "max": 8.759
+      },
+      "compileSeconds": {
+        "median": 2.1,
+        "min": 0.927,
+        "max": 2.5
+      },
+      "mdxCpuMs": {
+        "median": 273,
+        "min": 223,
+        "max": 306
+      },
+      "mdxFiles": {
+        "median": 1,
+        "min": 1,
+        "max": 1
+      }
+    }
+  }
+}
