@@ -144,6 +144,15 @@ describe("PageActions copy markdown labels", () => {
     ).toBe("# Install\n\nBody copy");
   });
 
+  it("preserves the markdown source when includeTitle is omitted", () => {
+    const source = "\nBody copy\n";
+    expect(
+      formatCopyMarkdownContent({ content: source, format: "markdown", title: "Install" }),
+    ).toBe(source);
+    const html = renderToStaticMarkup(React.createElement(PageActions, { copyMarkdown: true }));
+    expect(html).not.toContain("data-copy-markdown-include-title");
+  });
+
   it("prepends a plain title for text copies", () => {
     expect(
       formatCopyMarkdownContent({
@@ -175,6 +184,18 @@ describe("PageActions copy markdown labels", () => {
         title: "Install",
       }),
     ).toBe("Install\n\nBody copy");
+  });
+
+  it("preserves blank lines before an existing markdown title", () => {
+    const content = "\n\n# Install\n\nBody copy";
+    expect(
+      formatCopyMarkdownContent({
+        content,
+        format: "markdown",
+        includeTitle: true,
+        title: "Install",
+      }),
+    ).toBe(content);
   });
 });
 
