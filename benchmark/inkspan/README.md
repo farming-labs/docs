@@ -1,6 +1,16 @@
 # Inkspan in docs core
 
-Over 53 pages, docs extracted 744 human sections in 157.23 ms (4.29×) and 272 agent sections in 29.19 ms (3.84×). The first filesystem MCP scan took 1269.29 ms (1.92×). Each operation produced the baseline output. The [Inkspan benchmark report](https://github.com/farming-labs/inkspan/blob/main/docs/benchmarks.md) includes median, p95, controls, the small-expression regression, and standalone reproduction commands.
+With the parser shipped in Inkspan `0.1.0-beta.2`, docs extracted 745 human sections and 272 agent sections across 53 pages. The complete sections, audience tags, projections, and filesystem page records matched the baseline.
+
+| Operation | Baseline median / p95 (ms) | Inkspan median / p95 (ms) | Baseline repeat median (ms) | Median speedup |
+| --- | ---: | ---: | ---: | ---: |
+| Human sections | 765 / 1170 | 158 / 269 | 727 | 4.84× |
+| Agent sections | 139 / 203 | 33 / 62 | 145 | 4.17× |
+| Audience tags | 1099 / 2338 | 733 / 2170 | 924 | 1.50× |
+| Both audience projections | 2051 / 6453 | 1407 / 2578 | 2466 | 1.46× |
+| First filesystem MCP scan | 2774 / 3962 | 1653 / 1991 | 2775 | 1.68× |
+
+Measured on an Apple M1 with Node 24.21.0 and Darwin 25.2.0. Each variant ran once for warmup and nine times for measurement in interleaved order. Each section run started with an empty cache. The p95 is the slowest of the nine samples. The standalone JSX-expression fixture took 24.00 ms with Inkspan and 23.38 ms with the reference parser. Its reference repeat took 16.86 ms. See the [standalone benchmarks](https://github.com/farming-labs/inkspan/blob/main/docs/benchmarks.md) for other parser workloads.
 
 ## Run the integration benchmarks
 
@@ -8,7 +18,7 @@ Run from the docs integration checkout using Node 24.21.0 and pnpm 10.9.0. The p
 
 ```sh
 bench_dir=$(mktemp -d)
-git worktree add --detach "$bench_dir/baseline" 6d442beb8cc94378a46b063fbab79c48ece769ed
+git worktree add --detach "$bench_dir/baseline" 98d573f9dd8db503927330226b5e4cb6da23c42b
 pnpm --dir "$bench_dir/baseline" --filter @farming-labs/docs... install --frozen-lockfile --ignore-scripts
 pnpm --dir "$bench_dir/baseline" --filter @farming-labs/docs build
 pnpm --filter @farming-labs/docs... install --frozen-lockfile --ignore-scripts

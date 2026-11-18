@@ -388,8 +388,8 @@ importers:
         specifier: ^1.7.0
         version: 1.7.0
       '@farming-labs/inkspan':
-        specifier: https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a
-        version: https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a
+        specifier: 0.1.0-beta.2
+        version: 0.1.0-beta.2
       '@modelcontextprotocol/server':
         specifier: 2.3.0
         version: 2.3.0
@@ -1783,9 +1783,8 @@ packages:
     resolution: {integrity: sha512-9Rmep2U0eCCWx6zwLb1VAfjbYfsbGtXBsMZusSvYkbCV+3eEcz6+GhfOi7A8gfp7JiAdkiOpmGhmaJnc8wEb1A==}
     engines: {node: '>=20.0.0'}
 
-  '@farming-labs/inkspan@https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a':
-    resolution: {tarball: https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a}
-    version: 0.1.0-beta.0
+  '@farming-labs/inkspan@0.1.0-beta.2':
+    resolution: {integrity: sha512-xi23IfgsMJG4Of6UyRSQfEO/WNIksPzpHNQLmg6SBkHyOc/7Zt+vCL3HCGSfBEWyFw/sRK7nsUDWMGbmtMjV8A==}
     engines: {node: '>=20'}
 
   '@farming-labs/orm-d1@0.0.66':
@@ -10900,7 +10899,7 @@ snapshots:
       '@farm.js/tunnel-win32-arm64-msvc': 0.1.2
       '@farm.js/tunnel-win32-x64-msvc': 0.1.2
 
-  '@farming-labs/inkspan@https://codeload.github.com/farming-labs/inkspan/tar.gz/ebc7800b188c6deefe3ffa91d17104d00247676a': {}
+  '@farming-labs/inkspan@0.1.0-beta.2': {}
 
   '@farming-labs/orm-d1@0.0.66':
     dependencies:
