@@ -684,7 +684,9 @@ function findMdxAstAudienceTags(content: string): DocsAudienceMdxTag[] | undefin
 
 // Standalone static wrappers have unambiguous boundaries. Extended syntax still goes through
 // the docs visitor, which also handles Svelte directives and JSX inside JavaScript expressions.
-function indexStaticAudienceTags(content: string): DocsAudienceMdxTag[] | undefined {
+function indexStaticAudienceTags(source: string): DocsAudienceMdxTag[] | undefined {
+  const bodyStart = findLeadingFrontmatterRange(source)?.end ?? 0;
+  const content = source.slice(bodyStart);
   if (
     /^\uFEFF|^(?:---|\+\+\+)[\t ]*(?:\r?\n|$)|<!--|<(?:script|style)(?=[\s/>])|\{[#:@/]/u.test(
       content,
@@ -724,12 +726,19 @@ function indexStaticAudienceTags(content: string): DocsAudienceMdxTag[] | undefi
     const only = (match[3] ?? match[4]) as DocsContentAudience | undefined;
     if (match[1]) {
       if (only || ends.get(end) !== name) return undefined;
-      tags.push({ index, end, name, closing: true, selfClosing: false, attributes: "" });
+      tags.push({
+        index: bodyStart + index,
+        end: bodyStart + end,
+        name,
+        closing: true,
+        selfClosing: false,
+        attributes: "",
+      });
     } else {
       if (starts.get(index) !== name) return undefined;
       tags.push({
-        index,
-        end,
+        index: bodyStart + index,
+        end: bodyStart + end,
         name,
         closing: false,
         selfClosing: false,

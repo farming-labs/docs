@@ -13,6 +13,26 @@ beforeEach(() => {
 });
 
 describe("on-demand MDX processors", () => {
+  it.each([
+    "---\ntitle: '<Agent> 🌱'\n---\n",
+    "\uFEFF---\r\ntitle: '<Human> 🌱'\r\n...\r\n",
+    "+++\ntitle = '<Audience> 🌱'\n+++\n",
+  ])("indexes static audience wrappers after frontmatter with original offsets", async (header) => {
+    const { findDocsAudienceMdxIssues, findDocsAudienceMdxTags } = await import("./audience.js");
+    const { createDocsMarkdownParser } = await import("./markdown-parser.js");
+    const body = "\n# 題名\n\n<Audience>\nText\n</Audience>";
+    const source = header + body;
+    const tags = findDocsAudienceMdxTags(source);
+    expect(tags.map(({ index, end }) => source.slice(index, end))).toEqual([
+      "<Audience>",
+      "</Audience>",
+    ]);
+    expect(findDocsAudienceMdxIssues(source)).toEqual([
+      expect.objectContaining({ code: "missing-only", index: source.lastIndexOf("<Audience>") }),
+    ]);
+    expect(createDocsMarkdownParser).not.toHaveBeenCalled();
+  });
+
   it("does not construct parsers when the public entry is used for configuration", async () => {
     const { defineDocs } = await import("./index.js");
     const { createDocsMarkdownParser } = await import("./markdown-parser.js");

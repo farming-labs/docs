@@ -34,3 +34,35 @@ git worktree remove "$bench_dir/baseline"
 ```
 
 Both scripts store all timing samples and hashes. The sections harness optionally accepts a fifth argument pointing to a consumer of the previous packed prototype. The audience harness also measures the JavaScript parser with one-source reuse in isolation. It asserts that applying that single change to the baseline patched exactly one site. Run the standalone parser parity suite in the Inkspan checkout.
+
+## Authored files in `docs review`
+
+On the same 53 website pages, the packed CLI returned the same JSON report, including all 14 findings and their line numbers. An independent trace of one validation pass found 39 pages served by the Rust component index. The docs MDX visitor handled 13 pages, down from 52, and one page had no audience tags.
+
+| Operation | Previous integration median / p95 (ms) | With frontmatter support median / p95 (ms) | Previous integration repeat median / p95 (ms) |
+| --- | ---: | ---: | ---: |
+| Audience validation on whole files | 1175 / 1659 | 1000 / 1153 | 1110 / 1790 |
+| Complete `docs review` process | 5850 / 8058 | 4663 / 8891 | 4788 / 11658 |
+
+Validation took 15% less time at the median. For the full CLI, the two baseline medians differed by 18%, and the candidate's p95 exceeded the first baseline's. The full-command speedup is inconclusive. Measurements used the same Apple M1 and Node version as above, with one warmup and nine interleaved measurements per variant. The harness hashes every result, including the complete CLI report. The input SHA-256 was `60012b73f2087fe188d61a713d15b9899c364eb172c6c65bb37703c6b2251cf3`.
+
+Use the previous integration as the baseline and the installed candidate tarball from above. Give the review command two Git revisions so it can discover the changed files through its usual entry point.
+
+```sh
+git worktree add --detach "$bench_dir/previous" 3767e8e36c50eb80634909f11642fceb79f0dfc9
+pnpm --dir "$bench_dir/previous" --filter @farming-labs/docs... install --frozen-lockfile --ignore-scripts
+pnpm --dir "$bench_dir/previous" --filter @farming-labs/docs build
+baseline="$bench_dir/previous/packages/docs/dist"
+site="$bench_dir/review-site"
+git init -q "$site"
+git -C "$site" config user.name "Benchmark"
+git -C "$site" config user.email "benchmark@example.invalid"
+git -C "$site" -c commit.gpgsign=false commit --allow-empty -qm initial
+mkdir -p "$site/app"
+cp -R website/src/app/docs "$site/app/docs"
+echo 'export default { entry: "docs", contentDir: "app/docs", review: { enabled: true } };' > "$site/docs.config.ts"
+git -C "$site" add app/docs docs.config.ts
+git -C "$site" -c commit.gpgsign=false commit -qm corpus
+node benchmark/inkspan/audience.mjs "$baseline" "$candidate" "$bench_dir/review.json" "$site"
+git worktree remove "$bench_dir/previous"
+```

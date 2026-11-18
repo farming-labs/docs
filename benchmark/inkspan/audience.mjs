@@ -12,6 +12,19 @@ const root = fileURLToPath(new URL("../../", import.meta.url)),
 const options = { rootDir: root, contentDir: "website/src/app/docs" };
 const digest = (data) => createHash("sha256").update(JSON.stringify(data)).digest("hex");
 
+function runReview(dist, cwd) {
+  const args = [
+    join(dist, "cli/index.mjs"),
+    "review",
+    "--base",
+    "HEAD~1",
+    "--head",
+    "HEAD",
+    "--json",
+  ];
+  return JSON.parse(execFileSync(process.execPath, args, { cwd, encoding: "utf8" }));
+}
+
 if (process.argv[2] === "worker") {
   const [, , , variant, dist, group, fixture] = process.argv;
   if (variant === "reuse") {
@@ -45,48 +58,67 @@ if (process.argv[2] === "worker") {
     });
   }
   let run;
-  if (group === "scan") {
+  if (group === "review") {
+    run = () => runReview(dist, fixture);
+  } else if (group === "scan") {
     const { createFilesystemDocsMcpSource } = await import(pathToFileURL(join(dist, "mcp.mjs")));
     const source = createFilesystemDocsMcpSource(options);
     run = () => source.getPages();
   } else {
     const data = JSON.parse(readFileSync(fixture));
     const audience = await import(pathToFileURL(join(dist, "audience.mjs")));
-    run =
-      group === "tags"
-        ? () => data.map((s) => audience.findDocsAudienceMdxTags(s))
-        : () =>
-            data.map((s) =>
-              ["human", "agent"].map((a) => audience.resolveDocsAudienceMdxContent(s, a)),
-            );
+    if (group === "validation") {
+      run = () => data.map((s) => audience.findDocsAudienceMdxIssues(s));
+    } else if (group === "tags") {
+      run = () => data.map((s) => audience.findDocsAudienceMdxTags(s));
+    } else {
+      run = () =>
+        data.map((s) =>
+          ["human", "agent"].map((a) => audience.resolveDocsAudienceMdxContent(s, a)),
+        );
+    }
   }
   const start = performance.now(),
     result = await run(),
     ms = performance.now() - start;
-  console.log(JSON.stringify({ ms, hash: digest(result), pages: result.length }));
+  console.log(
+    JSON.stringify({
+      ms,
+      hash: digest(result),
+      pages: group === "review" ? result.reviewedFiles.length : result.length,
+    }),
+  );
 } else {
-  if (process.argv.length !== 5)
-    throw Error("Pass baseline docs dist, candidate docs dist and an output JSON path.");
-  const [baseline, candidate, output] = process.argv.slice(2).map((p) => resolve(p));
+  if (process.argv.length < 5 || process.argv.length > 6)
+    throw Error(
+      "Pass baseline docs dist, candidate docs dist, an output JSON path and optionally a Git review fixture.",
+    );
+  const [baseline, candidate, output, reviewProject] = process.argv.slice(2).map((p) => resolve(p));
   const temp = mkdtempSync(join(tmpdir(), "inkspan-audience-")),
     fixture = join(temp, "inputs.json");
   try {
-    const { createFilesystemDocsMcpSource } = await import(
-      pathToFileURL(join(baseline, "mcp.mjs"))
-    );
-    const pages = await createFilesystemDocsMcpSource(options).getPages();
-    const matter = createRequire(join(root, "packages/docs/package.json"))("gray-matter");
-    writeFileSync(
-      fixture,
-      JSON.stringify(
-        pages.map((p) => matter(readFileSync(join(root, p.sourcePath), "utf8")).content),
-      ),
-    );
+    let pages;
+    if (reviewProject) {
+      const report = runReview(baseline, reviewProject);
+      assert.equal(report.status, "measured");
+      assert.ok(report.reviewedFiles.length > 0);
+      pages = report.reviewedFiles.map((file) => readFileSync(join(reviewProject, file), "utf8"));
+    } else {
+      const { createFilesystemDocsMcpSource } = await import(
+        pathToFileURL(join(baseline, "mcp.mjs"))
+      );
+      const sourcePages = await createFilesystemDocsMcpSource(options).getPages();
+      const matter = createRequire(join(root, "packages/docs/package.json"))("gray-matter");
+      pages = sourcePages.map(
+        (p) => matter(readFileSync(join(root, p.sourcePath), "utf8")).content,
+      );
+    }
+    writeFileSync(fixture, JSON.stringify(pages));
     const samples = [],
       summaries = [];
-    for (const group of ["tags", "projection", "scan"]) {
+    for (const group of reviewProject ? ["validation", "review"] : ["tags", "projection", "scan"]) {
       const variants =
-        group === "tags"
+        group === "tags" || reviewProject
           ? ["baseline", "candidate", "control"]
           : ["baseline", "candidate", "control", "reuse"];
       let expected;
@@ -97,7 +129,14 @@ if (process.argv[2] === "worker") {
         for (const variant of order) {
           const dist = variant === "candidate" ? candidate : baseline;
           const sample = JSON.parse(
-            execFileSync(process.execPath, [here, "worker", variant, dist, group, fixture]),
+            execFileSync(process.execPath, [
+              here,
+              "worker",
+              variant,
+              dist,
+              group,
+              group === "review" ? reviewProject : fixture,
+            ]),
           );
           expected ??= sample.hash;
           assert.equal(sample.hash, expected, group + " output differs for " + variant);
@@ -120,6 +159,7 @@ if (process.argv[2] === "worker") {
       output,
       JSON.stringify(
         {
+          inputHash: digest(pages),
           node: process.version,
           cpu: cpus()[0].model,
           os: release(),
