@@ -83,8 +83,10 @@ describe("resolveFarmDocsViteContentRoots", () => {
 
 describe("docsMdx workspace sources", () => {
   const configOf = () => {
-    const [workspacePlugin] = docsMdx() as Array<{ config: () => Record<string, any> }>;
-    return workspacePlugin.config();
+    const [workspacePlugin] = docsMdx() as Array<{
+      config: (config: object, env: { command: string; mode: string }) => Record<string, any>;
+    }>;
+    return workspacePlugin.config({}, { command: "serve", mode: "development" });
   };
 
   afterEach(() => {

@@ -85,9 +85,13 @@ describe("withDocs", () => {
   it("forwards additional documentation roots to the adapter MDX plugin", () => {
     const result = withDocs({}, { contentRoots: ["../shared-docs"] });
     const plugins = (result.vite as { plugins: unknown[] }).plugins;
-    const adapterPlugins = plugins[0] as Array<{ config?: () => Record<string, any> }>;
+    const adapterPlugins = plugins[0] as Array<{
+      config?: (config: object, env: { command: string; mode: string }) => Record<string, any>;
+    }>;
 
-    expect(adapterPlugins[0]?.config?.()).toMatchObject({
+    expect(
+      adapterPlugins[0]?.config?.({}, { command: "serve", mode: "development" }),
+    ).toMatchObject({
       server: {
         fs: {
           allow: expect.arrayContaining([expect.stringContaining("shared-docs")]),
