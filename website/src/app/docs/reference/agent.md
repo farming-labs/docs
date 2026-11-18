@@ -27,6 +27,13 @@ builds. Source, module path, themes, mode, Node version, and compiler implementa
 changes invalidate cached output. Missing or unusable caches fall back to compilation;
 set `buildCache: false` to diagnose without reuse.
 
+Next.js keeps each highlighted code block in `<distDir>/cache/farming-labs/code-highlight`, so a
+recompiled page reuses unchanged blocks and skips Shiki when all of them are cached. MDX plugins
+still run. Keys cover code, language, meta, highlighter options, and Fumadocs and Shiki versions.
+Markdown, MDX, Vue, Svelte, Astro, and other lazily embedding grammars are never cached, and
+neither is a block that took longer than Shiki's `tokenizeTimeLimit` to highlight. A custom
+`mdx.codeHighlighter` replaces the cache. At most 16,384 blocks are kept per configuration.
+
 For custom Node build pipelines, import `DocsBuildCache<T>`, `DocsBuildCacheOptions`, and
 `docsBuildCacheDigest` from `@farming-labs/docs/build` (0.2.137+). This is the same cache used
 by Farm.js. Create one instance per build pass and output schema; call

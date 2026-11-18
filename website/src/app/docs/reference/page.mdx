@@ -113,6 +113,20 @@ an unchanged cache file untouched. The limits bound retained entries; an oversiz
 returned normally without evicting reusable output. Deleted pages are omitted by the caller's
 current input list, and obsolete cache entries remain bounded by those limits.
 
+### Highlighted code in Next.js
+
+`withDocs()` keeps each highlighted code block in `<distDir>/cache/farming-labs/code-highlight`.
+When Turbopack recompiles a page, unchanged blocks are reused, and a page whose blocks are all
+cached never starts Shiki. MDX plugins from `mdx` still run on every compile, and setting
+`mdx.codeHighlighter` replaces the built-in highlighter and its cache. Keys cover the code,
+language, meta string, highlighter options, and the Fumadocs and Shiki versions. Markdown, MDX,
+Vue, Svelte, Astro, and other grammars that embed languages lazily are highlighted every time,
+because their colors depend on the other languages a build worker has loaded. A block that took
+longer than Shiki's `tokenizeTimeLimit` (500 ms by default) to highlight is not stored, because
+Shiki stops styling a line at that limit. The cache keeps at
+most 16,384 blocks per configuration and removes caches left by other configurations after an
+hour.
+
 ## `DocsConfig`
 
 ### `DocsLocalMcpSearchRuntimeConfig`

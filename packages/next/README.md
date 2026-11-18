@@ -101,6 +101,19 @@ The built-in highlighter uses Shiki's Oniguruma engine during compilation. A cus
 can import `@farming-labs/next/mdx-plugins/rehype-code` to keep that default while configuring
 themes and transformers. Passing `engine: "js"` explicitly selects Shiki's JavaScript engine.
 
+The built-in highlighter also keeps each highlighted code block in
+`<distDir>/cache/farming-labs/code-highlight`, which Next.js preserves between builds. When
+Turbopack recompiles a page, for example after a Next.js upgrade or an edit, unchanged blocks
+are reused, and a page whose blocks are all cached never starts Shiki. Your remark and rehype
+plugins still run on every compile. Entries are keyed by the code, language, meta string,
+highlighter options, and the Fumadocs and Shiki versions, and the cache keeps at most 16,384
+blocks per configuration. Blocks whose colors depend on other languages loaded by the same
+worker are highlighted every time: Markdown, MDX, Vue, Svelte, Astro, and other grammars that
+embed languages lazily, and every language an injecting grammar such as `ts-tags` targets once a
+worker loads it. A block that took longer to highlight than Shiki's `tokenizeTimeLimit` (500 ms
+by default) is not stored either, because Shiki may have stopped styling one of its lines. Options
+that are not plain JSON, such as transformers, disable the cache.
+
 ## Page metadata transport
 
 Production builds send title, description, reading time, dates, and structured data with each

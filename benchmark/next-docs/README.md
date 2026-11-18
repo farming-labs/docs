@@ -156,6 +156,36 @@ build when the disk has less than `--min-free-gib` free (default 3).
 
 Results and the conclusion are in the [MDX ceiling report](./results/2026-11-12-mdx-ceiling/REPORT.md).
 
+## Highlighted-code cache
+
+`code_highlight.py` builds two copies of the farming fixture: one with the code highlighter's
+`cacheDir` removed and one with the default. Each round rotates cold builds (twice without the
+cache, as an A/A pair; once with an empty cache; once with a primed cache and no Turbopack cache)
+and edit builds that change one paragraph of a warm app. Every page's highlighted `<pre>` markup
+must match between variants in the same round:
+
+```sh
+python3 benchmark/next-docs/code_highlight.py --pages 100 --rounds 9
+```
+
+`shiki-startup.mjs` times each step of Shiki's startup in fresh processes with the Oniguruma and
+JavaScript engines, and optionally with Shiki's precompiled grammars:
+
+```sh
+npm install --prefix /tmp/shiki-precompiled @shikijs/langs-precompiled@4.5.0 @shikijs/engine-javascript@4.5.0
+node benchmark/next-docs/shiki-startup.mjs --rounds 7 --precompiled /tmp/shiki-precompiled
+```
+
+`code_highlight_parity.mjs` compiles the corpus, the website's docs and edge cases in fresh
+processes, without the cache and with a filled one, and exits with 1 when any output differs:
+
+```sh
+pnpm --filter @farming-labs/next build
+node benchmark/next-docs/code_highlight_parity.mjs --jobs 4
+```
+
+Results are in the [code highlight cache report](./results/2026-11-18-code-highlight-cache/REPORT.md).
+
 ## Reference setup
 
 The Fumadocs baseline follows its [Next.js integration](https://www.fumadocs.dev/docs/mdx/next),
