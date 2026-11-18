@@ -37,6 +37,16 @@ describe("build-time code highlighting", () => {
     expect(javascript).not.toHaveBeenCalled();
   });
 
+  it("tokenizes every line completely however long it takes", async () => {
+    // Shiki otherwise stops styling a line after 500 ms, which a cold worker can reach.
+    const source = "```ts\nconst a = 1; const b = 2;\n```";
+    const expected = String(await compile(source, { rehypePlugins: [[rehypeCode, { themes }]] }));
+    let now = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => (now += 1_000));
+    const slow = String(await compile(source, { rehypePlugins: [[rehypeCode, { themes }]] }));
+    expect(slow).toBe(expected);
+  });
+
   it("preserves an explicitly selected JavaScript engine", async () => {
     const javascript = vi.spyOn(defaultShikiFactory, "getOrInit");
     const oniguruma = vi.spyOn(wasmShikiFactory, "getOrInit");
@@ -88,15 +98,15 @@ describe("code highlight cache", () => {
     expect(entries()).toHaveLength(2);
   });
 
-  it("does not store a block that took longer than Shiki's tokenize time limit", async () => {
+  it("does not store a block that took longer than a configured tokenize time limit", async () => {
     // Shiki leaves the rest of a line unstyled once tokenizing it takes `tokenizeTimeLimit`.
     let clock = 0;
     vi.spyOn(performance, "now").mockImplementation(() => (clock += 1_000));
     const source = "```ts\nconst a = 1;\n```";
-    await highlight(source);
+    await highlight(source, { themes, cacheDir, tokenizeTimeLimit: 500 });
     expect(entries()).toHaveLength(0);
-    // `0` turns the limit off, so every line is tokenized completely.
-    await highlight(source, { themes, cacheDir, tokenizeTimeLimit: 0 });
+    // The default turns the limit off, so every line is tokenized completely.
+    await highlight(source);
     expect(entries()).toHaveLength(1);
   });
 

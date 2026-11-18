@@ -167,6 +167,23 @@ Without the cache, such a build ships a few unstyled lines once. Before this was
 would have stored a cut-off block and reused it in every later build. It now skips any block that
 took longer than the limit to highlight, and the parity check turns the limit off on both sides.
 
+### Follow-up: both fixed
+
+The plugin now highlights injecting and lazily embedding languages with highlighters of their own,
+whose languages are fixed, and turns Shiki's time limit off by default. The parity check gained a
+third comparison: each file's output in the ordered process must match its output in a fresh one.
+It now runs with the default options.
+
+| Plugin | Cache differences | Order differences | Files without Shiki |
+| --- | ---: | ---: | ---: |
+| As measured above, default options | 6 | 11 | 156 |
+| Fixed, default options | 0 | 0 | 177 |
+
+The six cache differences in the first row are `corpus` pages with cut-off lines. The order
+differences add Markdown with nested code (`edge/22`) and two website pages. The fixed run is
+[parity-stable.json](./parity-stable.json). More files skip Shiki because Markdown, MDX, Vue and
+the other embedding languages are now stored. The build timings above predate this change.
+
 ## Not measured
 
 - Builds after the two correctness fixes. Runs A and B used the plugin before it tracked injected

@@ -11,7 +11,12 @@ import {
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { rehypeCode, type RehypeCodeOptions } from "fumadocs-core/mdx-plugins/rehype-code";
+import {
+  rehypeCode,
+  rehypeCodeDefaultOptions,
+  type RehypeCodeOptions,
+} from "fumadocs-core/mdx-plugins/rehype-code";
+import { createRehypeCode } from "fumadocs-core/mdx-plugins/rehype-code.core";
 
 export type DocsRehypeCodeOptions = Partial<RehypeCodeOptions> & {
   /**
@@ -32,25 +37,52 @@ interface HastNode {
   data?: { meta?: unknown };
 }
 interface CodeBlock {
+  node: HastNode;
   parent: HastNode & { children: HastNode[] };
   index: number;
   lang: string;
   key: string;
 }
 interface LanguageRegistration {
-  scopeName: string;
   injectTo?: string[];
   embeddedLangsLazy?: string[];
 }
+type HighlighterFactory = Extract<
+  Parameters<typeof createRehypeCode>[0],
+  (...args: never[]) => unknown
+>;
+type Highlighter = Awaited<ReturnType<HighlighterFactory>>["highlighter"];
 interface ShikiModule {
   bundledLanguages: Record<string, () => Promise<{ default: LanguageRegistration[] }>>;
+  bundledLanguagesInfo: { id: string; aliases?: string[] }[];
+  createHighlighter(options: Record<string, unknown>): Promise<Highlighter>;
+  createOnigurumaEngine(wasm: Promise<unknown>): unknown;
+  createJavaScriptRegexEngine(): unknown;
 }
 interface ShikiCore {
   isSpecialLang: (lang: string) => boolean;
 }
 
 // Bump when a cached fragment or its key changes meaning.
-const CACHE_FORMAT = 1;
+const CACHE_FORMAT = 2;
+// Fenced code inside Markdown, and the scripts and styles of single-file components, is
+// highlighted for these languages, the ones Farm.js preloads. Any other embedded language stays
+// plain, so the output never depends on which languages a worker loaded for earlier pages.
+const EMBEDDED_LANGUAGES = [
+  "yaml",
+  "toml",
+  "json",
+  "jsonc",
+  "html",
+  "css",
+  "javascript",
+  "typescript",
+  "jsx",
+  "tsx",
+  "shellscript",
+  "markdown",
+  "mdx",
+];
 const MEMORY_ENTRIES = 2_000;
 // Entries spread over 256 directories, so this bounds a scope at 16,384 blocks.
 const SHARD_ENTRIES = 64;
@@ -107,39 +139,57 @@ function resolveHighlighter() {
     versions: { fumadocs: fumadocs.json.version, shiki: shiki.json.version, shikijs },
     shiki: pathToFileURL(fumadocs.require.resolve("shiki")).href,
     shikiCore: pathToFileURL(fumadocs.require.resolve("shiki/core")).href,
+    shikiWasm: pathToFileURL(fumadocs.require.resolve("shiki/wasm")).href,
   };
 }
+type ResolvedHighlighter = ReturnType<typeof resolveHighlighter>;
 
+/** The highlighter a language's blocks need instead of the shared one, and what it loads. */
+interface SeparateHighlighter {
+  key: string;
+  langs: string[];
+}
 interface LanguageInfo {
-  /** Its output depends only on its own grammars, which inject into nothing. */
-  cacheable: boolean;
-  /** Scopes of its grammars and of the languages they embed. */
-  scopes: string[];
-  /** Scopes it changes for every later highlight in the same process. */
-  injectTo: string[];
+  /** A bundled or special language. Unknown ones fail or fall back, and are never stored. */
+  known: boolean;
+  separate?: SeparateHighlighter;
 }
 
-// A highlighter is shared by every file a worker compiles. Grammars that inject into other
-// scopes, or embed languages only when already loaded, make output depend on the files compiled
-// before. Store only output that a fresh highlighter would produce.
-function createLanguageInspector(shikiUrl: string, shikiCoreUrl: string) {
+// Fumadocs highlights every file a worker compiles with one highlighter, which loads each
+// language on first use. Grammars that inject into other languages (`ts-tags`, `lit`, `vue`,
+// `nix`, Angular) would change how later TypeScript, JavaScript, HTML or Markdown is highlighted,
+// and grammars that embed languages lazily (Markdown, MDX, Vue, Svelte, Astro, LaTeX, …) highlight
+// nested code only in languages that happen to be loaded. Blocks in those languages get a
+// highlighter whose languages never change, so every block's output depends only on the block.
+function createLanguageInspector(
+  urls: ResolvedHighlighter,
+  langAlias: Record<string, string> | undefined,
+) {
   const known = new Map<string, LanguageInfo>();
   const pending = new Map<string, Promise<LanguageInfo>>();
   const inspect = async (lang: string): Promise<LanguageInfo> => {
-    const [{ bundledLanguages }, { isSpecialLang }] = await Promise.all([
-      import(shikiUrl) as Promise<ShikiModule>,
-      import(shikiCoreUrl) as Promise<ShikiCore>,
+    const [shiki, { isSpecialLang }] = await Promise.all([
+      import(urls.shiki) as Promise<ShikiModule>,
+      import(urls.shikiCore) as Promise<ShikiCore>,
     ]);
-    if (isSpecialLang(lang)) return { cacheable: true, scopes: [], injectTo: [] };
-    const load = Object.hasOwn(bundledLanguages, lang) ? bundledLanguages[lang] : undefined;
-    if (!load) return { cacheable: false, scopes: [], injectTo: [] };
+    const target = langAlias?.[lang] ?? lang;
+    if (isSpecialLang(target)) return { known: true };
+    const load = Object.hasOwn(shiki.bundledLanguages, target)
+      ? shiki.bundledLanguages[target]
+      : undefined;
+    if (!load) return { known: false };
+    const id =
+      shiki.bundledLanguagesInfo.find(
+        (info) => info.id === target || info.aliases?.includes(target),
+      )?.id ?? target;
     const grammars = (await load()).default;
-    const injectTo = grammars.flatMap((grammar) => grammar.injectTo ?? []);
-    return {
-      cacheable: injectTo.length === 0 && !grammars.some((g) => g.embeddedLangsLazy?.length),
-      scopes: grammars.map((grammar) => grammar.scopeName),
-      injectTo,
-    };
+    const injects = grammars.some((grammar) => grammar.injectTo?.length);
+    const embeds = grammars.some((grammar) => grammar.embeddedLangsLazy?.length);
+    if (!injects && !embeds) return { known: true };
+    const langs = embeds ? [...new Set([...EMBEDDED_LANGUAGES, id])] : [id];
+    // Markdown and MDX need exactly the embedded languages, so they share one highlighter.
+    const key = embeds && !injects && EMBEDDED_LANGUAGES.includes(id) ? "embedded" : id;
+    return { known: true, separate: { key, langs } };
   };
   return {
     known: (lang: string) => known.get(lang),
@@ -154,9 +204,40 @@ function createLanguageInspector(shikiUrl: string, shikiCoreUrl: string) {
   };
 }
 
-// Scopes that grammars loaded by this process inject into. Fumadocs keeps one highlighter per
-// engine for the whole process, shared by every processor, such as the ones for `.md` and `.mdx`.
-const injected = new Set<string>();
+// Like Fumadocs' own highlighters, these live as long as the process and are shared by every
+// processor. There is at most one per language that needs its own.
+const separateHighlighters = new Map<string, Promise<Highlighter>>();
+
+function getSeparateHighlighter(
+  urls: ResolvedHighlighter,
+  engine: RehypeCodeOptions["engine"],
+  langAlias: Record<string, string> | undefined,
+  { key, langs }: SeparateHighlighter,
+) {
+  const id = JSON.stringify([engine, langAlias ?? null, key]);
+  let highlighter = separateHighlighters.get(id);
+  if (!highlighter) {
+    highlighter = (async () => {
+      const shiki = (await import(urls.shiki)) as ShikiModule;
+      // The same engines as Fumadocs' `wasmShikiFactory` and `defaultShikiFactory`.
+      const regexEngine =
+        engine === "oniguruma"
+          ? shiki.createOnigurumaEngine(import(urls.shikiWasm))
+          : shiki.createJavaScriptRegexEngine();
+      return shiki.createHighlighter({
+        langs,
+        themes: [],
+        langAlias,
+        engine: regexEngine,
+        // Shiki warns from ten instances. These are bounded by the languages that need one.
+        warnings: false,
+      });
+    })();
+    highlighter.catch(() => separateHighlighters.delete(id));
+    separateHighlighters.set(id, highlighter);
+  }
+  return highlighter;
+}
 
 const ignoreMissing = (error: unknown) => {
   if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
@@ -273,7 +354,8 @@ function findCodeBlocks(tree: HastNode, defaultLanguage: unknown): CodeBlock[] {
       const resolved = lang ?? defaultLanguage;
       if (typeof resolved !== "string" || !resolved) return;
       const meta = head.data?.meta ?? head.properties.metastring?.toString() ?? "";
-      blocks.push({ parent, index, lang: resolved, key: `${resolved}:${meta}:${flatten(head)}` });
+      const key = `${resolved}:${meta}:${flatten(head)}`;
+      blocks.push({ node, parent, index, lang: resolved, key });
       return;
     }
     node.children?.forEach((child, i) => visit(child, node as CodeBlock["parent"], i));
@@ -283,44 +365,50 @@ function findCodeBlocks(tree: HastNode, defaultLanguage: unknown): CodeBlock[] {
 }
 
 type Attacher = typeof rehypeCode;
+type Transform = ReturnType<Attacher>;
 
 export default function rehypeDocsCode(
   this: ThisParameterType<Attacher>,
   options: DocsRehypeCodeOptions = {},
 ): ReturnType<Attacher> {
   const { cacheDir, ...rest } = options;
-  const resolved: Partial<RehypeCodeOptions> = { engine: "oniguruma", ...rest };
-  // Custom grammars, aliases, eager loading and inline code change what a block's key means.
+  // Shiki stops styling a line once tokenizing it takes `tokenizeTimeLimit`, 500 ms by default,
+  // which a cold worker on a busy machine reaches. Builds tokenize every line completely.
+  const resolved: Partial<RehypeCodeOptions> = {
+    engine: "oniguruma",
+    tokenizeTimeLimit: 0,
+    ...rest,
+  };
+  // Eager loading puts every language in the highlighter before the first block, so the output
+  // already depends only on the block.
+  if (resolved.lazy === false) return rehypeCode.call(this, resolved);
+
+  const highlighter = resolveHighlighter();
+  const languages = createLanguageInspector(highlighter, resolved.langAlias);
+  // Custom grammars, aliases and inline code change what a block's key means.
   const cacheable =
     cacheDir &&
     resolved.cache === undefined &&
     resolved.langs === undefined &&
     resolved.langAlias === undefined &&
-    resolved.lazy !== false &&
     !resolved.inline &&
     isPlainJson(resolved);
-  if (!cacheable) return rehypeCode.call(this, resolved);
-
-  const highlighter = resolveHighlighter();
-  const scope = digest(JSON.stringify([CACHE_FORMAT, highlighter.versions, resolved]));
-  removeStaleScopes(cacheDir, scope.slice(0, 16));
-  const store = createCodeStore(join(cacheDir, scope.slice(0, 16)));
-  const languages = createLanguageInspector(highlighter.shiki, highlighter.shikiCore);
-  const usable = (lang: string) => {
-    const info = languages.known(lang);
-    return !!info?.cacheable && !info.scopes.some((scope) => injected.has(scope));
-  };
-  // Shiki leaves the rest of a line unstyled once tokenizing it takes this long, which a cold
-  // worker on a busy machine can reach. That output depends on load, so it is never stored.
-  const timeLimitMs =
-    typeof resolved.tokenizeTimeLimit === "number" ? resolved.tokenizeTimeLimit : 500;
+  let store: ReturnType<typeof createCodeStore> | undefined;
+  if (cacheable) {
+    const scope = digest(JSON.stringify([CACHE_FORMAT, highlighter.versions, resolved]));
+    removeStaleScopes(cacheDir, scope.slice(0, 16));
+    store = createCodeStore(join(cacheDir, scope.slice(0, 16)));
+  }
+  const usable = (lang: string) => !!store && !!languages.known(lang)?.known;
+  // A configured time limit can still cut a line short, and that output depends on load.
+  const timeLimitMs = resolved.tokenizeTimeLimit ?? 500;
   // Blocks that Fumadocs is highlighting now, by cache key, and when each last missed the cache.
   const highlighting = new Map<string, { lang: string; missedAt?: number }>();
   const cache: CodeCache = {
     get(key) {
       const block = highlighting.get(key);
       if (!block || !usable(block.lang)) return undefined;
-      const fragment = store.read(key);
+      const fragment = store!.read(key);
       if (!fragment) block.missedAt = performance.now();
       return fragment;
     },
@@ -330,18 +418,37 @@ export default function rehypeDocsCode(
       // Fumadocs tokenizes the block between the miss and this call, so a shorter interval
       // cannot contain a line that stopped early.
       if (timeLimitMs === 0 || performance.now() - block.missedAt < timeLimitMs) {
-        store.write(key, fragment);
+        store!.write(key, fragment);
       }
       return cache;
     },
   };
+  const codeOptions = store ? { ...resolved, cache } : resolved;
   const defaultLanguage = "defaultLanguage" in resolved ? resolved.defaultLanguage : "plaintext";
-  let highlight: ReturnType<Attacher> | undefined;
+  let shared: ReturnType<Attacher> | undefined;
+  const separate = new Map<string, ReturnType<Attacher>>();
+  const highlightSeparately = (target: SeparateHighlighter) => {
+    let transform = separate.get(target.key);
+    if (!transform) {
+      // Fumadocs' own `rehypeCode` is this call with its shared highlighter.
+      const factory: HighlighterFactory = async (options) => ({
+        highlighter: await getSeparateHighlighter(
+          highlighter,
+          resolved.engine,
+          resolved.langAlias,
+          target,
+        ),
+        options: { ...rehypeCodeDefaultOptions, ...options },
+      });
+      transform = createRehypeCode(factory).call(this, codeOptions);
+      separate.set(target.key, transform);
+    }
+    return transform;
+  };
   return async (tree, file) => {
     const blocks = findCodeBlocks(tree as HastNode, defaultLanguage);
     if (blocks.length === 0) return;
-    if (injected.size > 0) await Promise.all(blocks.map((block) => languages.inspect(block.lang)));
-    if (injected.size === 0 || blocks.every((block) => usable(block.lang))) {
+    if (store) {
       const fragments = blocks.map((block) => store.read(block.key));
       if (fragments.every((fragment) => fragment !== undefined)) {
         // Every block is cached, so this file never starts Shiki.
@@ -351,14 +458,27 @@ export default function rehypeDocsCode(
         return;
       }
     }
-    // Fumadocs loads every language of the file before it highlights any block.
-    for (const block of blocks) {
-      for (const scope of (await languages.inspect(block.lang)).injectTo) injected.add(scope);
-    }
+    const infos = await Promise.all(blocks.map((block) => languages.inspect(block.lang)));
+    // Take these blocks out of the tree, so the shared highlighter never loads their languages.
+    const moved = blocks.flatMap((block, i) => {
+      const target = infos[i]!.separate;
+      if (!target) return [];
+      const placeholder: HastNode = { type: "text", value: "" };
+      block.parent.children[block.index] = placeholder;
+      return [{ block, target, placeholder }];
+    });
     for (const block of blocks) highlighting.set(block.key, { lang: block.lang });
     try {
-      highlight ??= rehypeCode.call(this, { ...resolved, cache });
-      await highlight(tree, file, () => undefined);
+      if (moved.length < blocks.length) {
+        shared ??= rehypeCode.call(this, codeOptions);
+        await shared(tree, file, () => undefined);
+      }
+      for (const { block, target, placeholder } of moved) {
+        const root = { type: "root", children: [block.node] };
+        await highlightSeparately(target)(root as Parameters<Transform>[0], file, () => undefined);
+        const siblings = block.parent.children;
+        siblings.splice(siblings.indexOf(placeholder), 1, ...root.children);
+      }
     } finally {
       for (const block of blocks) highlighting.delete(block.key);
     }

@@ -177,7 +177,8 @@ node benchmark/next-docs/shiki-startup.mjs --rounds 7 --precompiled /tmp/shiki-p
 ```
 
 `code_highlight_parity.mjs` compiles the corpus, the website's docs and edge cases in fresh
-processes, without the cache and with a filled one, and exits with 1 when any output differs:
+processes, without the cache, with a filled one, and in one process in a fixed order. It exits with
+1 when a file's output differs between any two runs:
 
 ```sh
 pnpm --filter @farming-labs/next build

@@ -119,13 +119,16 @@ current input list, and obsolete cache entries remain bounded by those limits.
 When Turbopack recompiles a page, unchanged blocks are reused, and a page whose blocks are all
 cached never starts Shiki. MDX plugins from `mdx` still run on every compile, and setting
 `mdx.codeHighlighter` replaces the built-in highlighter and its cache. Keys cover the code,
-language, meta string, highlighter options, and the Fumadocs and Shiki versions. Markdown, MDX,
-Vue, Svelte, Astro, and other grammars that embed languages lazily are highlighted every time,
-because their colors depend on the other languages a build worker has loaded. A block that took
-longer than Shiki's `tokenizeTimeLimit` (500 ms by default) to highlight is not stored, because
-Shiki stops styling a line at that limit. The cache keeps at
-most 16,384 blocks per configuration and removes caches left by other configurations after an
+language, meta string, highlighter options, and the Fumadocs and Shiki versions. The cache keeps
+at most 16,384 blocks per configuration and removes caches left by other configurations after an
 hour.
+
+A block's colors never depend on the pages a build worker compiled before it. Grammars that
+change other languages (`ts-tags`, `lit`, `vue`, `nix`, Angular) and grammars that embed
+languages lazily (Markdown, MDX, Vue, Svelte, Astro, LaTeX, and others) use highlighters of their
+own. Code nested in them is highlighted for YAML, TOML, JSON, JSONC, HTML, CSS, JavaScript,
+TypeScript, JSX, TSX, shell, Markdown, and MDX. Shiki's per-line `tokenizeTimeLimit` is `0`, so
+every line is tokenized completely however busy the machine is.
 
 ## `DocsConfig`
 

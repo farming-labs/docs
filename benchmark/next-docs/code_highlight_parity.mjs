@@ -1,16 +1,14 @@
-// Checks that the highlighted-code cache never changes compiled MDX.
+// Checks that compiled MDX depends neither on the files a worker compiled before nor on the
+// highlighted-code cache.
 //
 //   node benchmark/next-docs/code_highlight_parity.mjs [--jobs 4] [--out <file>]
 //
 // It compiles the benchmark corpus, the website's docs and a list of edge cases through the Next
-// adapter's remark and rehype plugins from `packages/next/dist`. One process first compiles every
-// file in order with an empty cache, as a build worker would. Then each file is compiled alone in
-// two fresh processes, once without the cache and once with the filled cache, and the outputs must
-// be identical. Build `@farming-labs/next` first.
-//
-// Shiki stops styling a line after `tokenizeTimeLimit`, 500 ms by default, which a cold process on a
-// busy machine can reach. Both sides turn the limit off, so differences come from the cache and not
-// from load. The plugin's own tests cover how the cache treats slow blocks.
+// adapter's remark and rehype plugins from `packages/next/dist`, with the options `withDocs()`
+// passes. One process first compiles every file in order with an empty cache, as a build worker
+// would. Then each file is compiled alone in two fresh processes, once without the cache and once
+// with the filled cache. All three outputs of a file must be identical. Build `@farming-labs/next`
+// first.
 import { execFile, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -93,7 +91,7 @@ async function createCompiler(cacheDir) {
     factory.getOrInit = () => (counter.shikiStarts++, getOrInit());
   }
   const { createProcessor } = await import(pathToFileURL(require.resolve("@mdx-js/mdx")).href);
-  const options = { themes: { light: "github-light", dark: "github-dark" }, tokenizeTimeLimit: 0 };
+  const options = { themes: { light: "github-light", dark: "github-dark" } };
   const processor = createProcessor({
     providerImportSource: "next-mdx-import-source-file",
     development: false,
@@ -130,8 +128,9 @@ if (values.child) {
   const files = await sources();
   const compiler = await createCompiler(values["cache-dir"]);
   if (values.child === "sequence") {
-    for (const [path, value] of files) await compiler.compile(path, value);
-    console.log(JSON.stringify({ files: files.length, shikiStarts: compiler.counter.shikiStarts }));
+    const hashes = [];
+    for (const [path, value] of files) hashes.push(await compiler.compile(path, value));
+    console.log(JSON.stringify({ hashes, shikiStarts: compiler.counter.shikiStarts }));
   } else {
     const [path, value] = files[Number(values.file)];
     const hash = await compiler.compile(path, value);
@@ -172,6 +171,7 @@ if (values.child) {
           rows[index] = {
             file: files[index][0],
             same: uncached.hash === cached.hash,
+            inOrder: uncached.hash === sequence.hashes[index],
             error: uncached.hash.startsWith("error") ? uncached.hash : undefined,
             cachedShikiStarts: cached.shikiStarts,
           };
@@ -181,13 +181,14 @@ if (values.child) {
     const summary = {
       files: rows.length,
       differences: rows.filter((row) => !row.same).map((row) => row.file),
+      orderDifferences: rows.filter((row) => !row.inOrder).map((row) => row.file),
       withoutShiki: rows.filter((row) => row.cachedShikiStarts === 0).length,
       errors: rows.filter((row) => row.error).map((row) => `${row.file}: ${row.error}`),
       sequenceShikiStarts: sequence.shikiStarts,
     };
     console.log(JSON.stringify(summary, null, 2));
     if (values.out) writeFileSync(values.out, `${JSON.stringify({ summary, rows }, null, 2)}\n`);
-    if (summary.differences.length) process.exitCode = 1;
+    if (summary.differences.length || summary.orderDifferences.length) process.exitCode = 1;
   } finally {
     rmSync(cacheDir, { recursive: true, force: true });
   }
