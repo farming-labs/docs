@@ -1,0 +1,19 @@
+# Copy Markdown on the docs website
+
+These rules cover title formatting when the current page has a title and the copy format is Markdown.
+The reader-facing guide documents the [Copy Markdown options](../../../website/src/app/docs/customization/page-actions/page.mdx#copy-markdown).
+
+<Spec name="copy-markdown">
+  <Rule status="conforms" audited="2026-11-17" sha="136ad6b5">With includeTitle omitted, Copy Markdown preserves the source text.</Rule>
+  <Rule status="conforms" audited="2026-11-17" sha="136ad6b5">With includeTitle enabled, Copy Markdown adds a level-one title unless the first nonblank line matches the plain title or its level-one heading.</Rule>
+</Spec>
+
+## Verification
+
+The [PageActions component](../../../packages/fumadocs/src/page-actions.tsx) passes the page title and
+the configured default to `formatCopyMarkdownContent`. The [clipboard formatting tests](../../../packages/fumadocs/src/page-actions.test.ts)
+cover the default, a missing heading, an existing heading and a plain title.
+
+```sh
+pnpm --filter @farming-labs/theme test src/page-actions.test.ts
+```

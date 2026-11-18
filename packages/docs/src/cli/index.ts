@@ -46,11 +46,14 @@ export function parseFlags(argv: string[]): Record<string, string | boolean | un
     "dry-run",
     "write",
     "allow-publish",
+    "allow-spec-proposals",
   ]);
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg.startsWith("--") && arg.includes("=")) {
-      const [key, value] = arg.slice(2).split("=");
+      const equals = arg.indexOf("=");
+      const key = arg.slice(2, equals);
+      const value = arg.slice(equals + 1);
       if (key.startsWith("no-")) {
         flags[key.slice(3)] = false;
       } else if (booleanFlags.has(key) && value === "true") {
@@ -97,7 +100,43 @@ async function main() {
     client: typeof flags.client === "string" ? flags.client : undefined,
     json: typeof flags.json === "boolean" ? flags.json : undefined,
   };
+  if (
+    parsedCommand.command === "mcp" &&
+    args.some((arg) =>
+      ["--specs", "--allow-spec-proposals", "--specify-package", "--spec-approved"].includes(
+        arg.split("=", 1)[0],
+      ),
+    )
+  ) {
+    if (subcommand !== "author" || typeof flags.specs !== "string" || !flags.specs)
+      throw new Error(
+        "Use docs mcp author --specs <directory> to enable the private Specify integration.",
+      );
+    for (const key of ["specify-package", "spec-approved"]) {
+      if (
+        args.some((arg) => arg.split("=", 1)[0] === "--" + key) &&
+        (typeof flags[key] !== "string" || !flags[key])
+      )
+        throw new Error("Supply a path after --" + key + ".");
+    }
+    if (
+      flags["allow-spec-proposals"] !== undefined &&
+      typeof flags["allow-spec-proposals"] !== "boolean"
+    )
+      throw new Error("Use --allow-spec-proposals or --allow-spec-proposals=false.");
+  }
   const authoringMcpOptions = {
+    specify:
+      typeof flags.specs === "string"
+        ? {
+            directory: flags.specs,
+            packageDir:
+              typeof flags["specify-package"] === "string" ? flags["specify-package"] : undefined,
+            approved:
+              typeof flags["spec-approved"] === "string" ? flags["spec-approved"] : undefined,
+            allowProposals: flags["allow-spec-proposals"] === true,
+          }
+        : undefined,
     configPath: typeof flags.config === "string" ? flags.config : undefined,
     allowPublish: typeof flags["allow-publish"] === "boolean" ? flags["allow-publish"] : undefined,
     branchPrefix: typeof flags["branch-prefix"] === "string" ? flags["branch-prefix"] : undefined,
@@ -182,6 +221,9 @@ async function main() {
     const { printCloudHelp } = await import("./cloud.js");
     printCloudHelp();
     process.exit(1);
+  } else if (parsedCommand.command === "spec") {
+    const { runSpecify } = await import("./specify.js");
+    await runSpecify(args.slice(1));
   } else if (parsedCommand.command === "mcp" && subcommand === "author") {
     const { runAuthoringMcp } = await import("./authoring.js");
     await runAuthoringMcp(authoringMcpOptions);
@@ -475,6 +517,7 @@ ${pc.dim("Commands:")}
   ${pc.cyan("openapi")}  OpenAPI utilities (${pc.dim("diff")} and typed ${pc.dim("sdk")} generation)
   ${pc.cyan("review")}   Review changed docs files and wire Docs Review CI
   ${pc.cyan("codeblocks")} Validate fenced MDX code blocks (${pc.dim("validate")})
+  ${pc.cyan("spec")}     Inspect, approve, and follow private project specs with Specify
   ${pc.cyan("mcp")}      Run read-only docs MCP or the separate protected authoring server
   ${pc.cyan("robots")}   Robots.txt utilities (${pc.dim("generate")} for agent access policy)
   ${pc.cyan("search")}   Search utilities (${pc.dim("sync")} for external indexes)
@@ -505,6 +548,8 @@ ${pc.dim("Options for mcp:")}
   ${pc.cyan("mcp author")}          Run the local docs-authoring MCP over stdio
   ${pc.cyan("--branch-prefix <p>")} Restrict authoring branches (default: ${pc.dim("docs/")})
   ${pc.cyan("--base-branch <name>")} Set the base used for authoring draft PRs
+  ${pc.cyan("--specs <dir>")}        Mount local Specify resources and tools on mcp author
+  ${pc.cyan("--allow-spec-proposals")} Enable revision-checked spec proposals on mcp author
   ${pc.cyan("--allow-publish")}      Explicitly register commit, push, and draft-PR publishing
 
 ${pc.dim("Options for dev:")}
