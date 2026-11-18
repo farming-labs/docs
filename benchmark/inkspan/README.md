@@ -1,16 +1,16 @@
 # Inkspan in docs core
 
-With the parser shipped in Inkspan `0.1.0-beta.2`, docs extracted 745 human sections and 272 agent sections across 53 pages. The complete sections, audience tags, projections, and filesystem page records matched the baseline.
+With the parser shipped in Inkspan `0.1.0-beta.3`, docs extracted 745 human sections and 272 agent sections across 53 pages. The complete sections, audience tags, projections, and filesystem page records matched the baseline.
 
 | Operation | Baseline median / p95 (ms) | Inkspan median / p95 (ms) | Baseline repeat median (ms) | Median speedup |
 | --- | ---: | ---: | ---: | ---: |
-| Human sections | 765 / 1170 | 158 / 269 | 727 | 4.84× |
-| Agent sections | 139 / 203 | 33 / 62 | 145 | 4.17× |
-| Audience tags | 1099 / 2338 | 733 / 2170 | 924 | 1.50× |
-| Both audience projections | 2051 / 6453 | 1407 / 2578 | 2466 | 1.46× |
-| First filesystem MCP scan | 2774 / 3962 | 1653 / 1991 | 2775 | 1.68× |
+| Human sections | 575 / 662 | 195 / 236 | 579 | 2.95× |
+| Agent sections | 105 / 114 | 29 / 33 | 109 | 3.57× |
+| Audience tags | 683 / 922 | 559 / 676 | 683 | 1.22× |
+| Both audience projections | 1733 / 2145 | 1126 / 1318 | 1863 | 1.54× |
+| First filesystem MCP scan | 2022 / 2504 | 1180 / 2011 | 2061 | 1.71× |
 
-Measured on an Apple M1 with Node 24.21.0 and Darwin 25.2.0. Each variant ran once for warmup and nine times for measurement in interleaved order. Each section run started with an empty cache. The p95 is the slowest of the nine samples. The standalone JSX-expression fixture took 24.00 ms with Inkspan and 23.38 ms with the reference parser. Its reference repeat took 16.86 ms. See the [standalone benchmarks](https://github.com/farming-labs/inkspan/blob/main/docs/benchmarks.md) for other parser workloads.
+Measured on an Apple M1 with Node 24.21.0 and Darwin 25.2.0. Each variant ran once for warmup and nine times for measurement in interleaved order. Each section run started with an empty cache. The p95 is the slowest of the nine samples. The standalone JSX-expression fixture took 17.67 ms with Inkspan and 11.82 ms with the reference parser. Its reference repeat took 11.94 ms. See the [standalone benchmarks](https://github.com/farming-labs/inkspan/blob/main/docs/benchmarks.md) for other parser workloads.
 
 ## Run the integration benchmarks
 

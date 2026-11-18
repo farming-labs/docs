@@ -114,7 +114,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@farming-labs/inkspan": "0.1.0-beta.2",
+    "@farming-labs/inkspan": "0.1.0-beta.3",
     "@clack/prompts": "^1.7.0",
     "@modelcontextprotocol/server": "2.3.0",
     "@scalar/core": "^0.4.3",

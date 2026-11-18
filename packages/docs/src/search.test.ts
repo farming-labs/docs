@@ -25,6 +25,11 @@ import {
   resolveSearchRequestConfig,
 } from "./search.js";
 import { digestDocsRetrievalContent } from "./retrieval-digest.js";
+import {
+  prepareDocsMarkdownHeadings,
+  renderDocsMarkdownHeadings,
+  restoreDocsMarkdownHeadingOpeningTags,
+} from "./markdown-rendering.js";
 
 const pages = [
   {
@@ -135,6 +140,19 @@ Second.
       "/docs/anchors#foo-1",
       "/docs/anchors#foo-1-1",
     ]);
+  });
+
+  it("preserves rendered and indexed heading links after a stray MDX tag opener", () => {
+    const rawContent = "# Guide\n\n<\n\n## Using 2 * 3 * 4";
+    const prepared = prepareDocsMarkdownHeadings(rawContent);
+    const rendered = renderDocsMarkdownHeadings(prepared.markdown, prepared.headings);
+    const html = restoreDocsMarkdownHeadingOpeningTags(rendered.markdown, rendered.openingTags);
+    const documents = buildDocsSearchDocuments([
+      { title: "Guide", url: "/docs/guide", content: "Using 2 * 3 * 4", rawContent },
+    ]);
+
+    expect(html).toContain('<h2 id="using-2-3-4">');
+    expect(documents.map((document) => document.url)).toContain("/docs/guide#using-2-3-4");
   });
 
   it("keeps reserved explicit anchors distinct and URL-safe", () => {
