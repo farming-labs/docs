@@ -135,3 +135,11 @@ cache used by Farm.js's MDX compiler. Supply a stable page ID, a key covering al
 inputs, and a deterministic callback returning JSON-serializable output; call `flush()` after
 the build pass. See the [build-cache reference](https://docs.farming-labs.dev/docs/reference#persistent-build-cache)
 for invalidation, serialization, and storage behavior.
+
+## Index Markdown with Inkspan
+
+Search and section-addressed Markdown use the same heading outline as the standalone
+[`@farming-labs/inkspan`](https://github.com/farming-labs/inkspan) package. Use its
+`parseMarkdownSections(source, { format: "mdx" })` export to index content outside a docs application. Docs also uses its component spans for static
+audience wrappers and reuses tag discovery when projecting both audiences from the same source.
+The `docs review` command can index these wrappers in files with YAML or TOML frontmatter. Findings point to lines in the authored file.

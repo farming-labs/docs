@@ -1,3 +1,4 @@
+import { indexMarkdown, MarkdownSyntaxError } from "@farming-labs/inkspan";
 import { createDocsMarkdownParser } from "./markdown-parser.js";
 import { createDocsTextTransformCache } from "./text-transform-cache.js";
 import { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
@@ -681,10 +682,85 @@ function findMdxAstAudienceTags(content: string): DocsAudienceMdxTag[] | undefin
   }
 }
 
+// Standalone static wrappers have unambiguous boundaries. Extended syntax still goes through
+// the docs visitor, which also handles Svelte directives and JSX inside JavaScript expressions.
+function indexStaticAudienceTags(source: string): DocsAudienceMdxTag[] | undefined {
+  const bodyStart = findLeadingFrontmatterRange(source)?.end ?? 0;
+  const content = source.slice(bodyStart);
+  if (
+    /^\uFEFF|^(?:---|\+\+\+)[\t ]*(?:\r?\n|$)|<!--|<(?:script|style)(?=[\s/>])|\{[#:@/]/u.test(
+      content,
+    )
+  )
+    return undefined;
+  // JSX inside JavaScript may have whitespace or comments between "<" and its name.
+  if (content.includes("{") && /<(?:\s|\/[*/])/u.test(content)) return undefined;
+  const literals = [
+    ...content.matchAll(
+      /^<(\/?)(Agent|Human|Audience)(?: only=(?:"(human|agent)"|'(human|agent)'))?>(?=\r?$)/gmu,
+    ),
+  ];
+  if (
+    !literals.length ||
+    literals.length !== [...content.matchAll(/<\/?(?:Agent|Human|Audience)(?=[\s/>])/gu)].length
+  )
+    return undefined;
+  let components;
+  try {
+    components = indexMarkdown(content, {
+      format: "mdx",
+      components: DOCS_AUDIENCE_TAG_NAMES,
+    }).components;
+  } catch (error) {
+    if (error instanceof MarkdownSyntaxError) return undefined;
+    throw error;
+  }
+  if (components.length * 2 !== literals.length) return undefined;
+  const starts = new Map(components.map((element) => [element.start, element.name]));
+  const ends = new Map(components.map((element) => [element.end, element.name]));
+  const tags: DocsAudienceMdxTag[] = [];
+  for (const match of literals) {
+    const index = match.index,
+      end = index + match[0].length,
+      name = match[2] as DocsAudienceTagName;
+    const only = (match[3] ?? match[4]) as DocsContentAudience | undefined;
+    if (match[1]) {
+      if (only || ends.get(end) !== name) return undefined;
+      tags.push({
+        index: bodyStart + index,
+        end: bodyStart + end,
+        name,
+        closing: true,
+        selfClosing: false,
+        attributes: "",
+      });
+    } else {
+      if (starts.get(index) !== name) return undefined;
+      tags.push({
+        index: bodyStart + index,
+        end: bodyStart + end,
+        name,
+        closing: false,
+        selfClosing: false,
+        attributes: match[0].slice(name.length + 1, -1),
+        only: name === "Agent" ? "agent" : name === "Human" ? "human" : only,
+        hasOnlyAttribute: Boolean(only),
+        hasSpreadAttribute: false,
+        onlyKind: only ? "static" : "missing",
+      });
+    }
+  }
+  return tags;
+}
+
 /** Locate effective audience tags while excluding Markdown/MDX literal contexts. */
 export function findDocsAudienceMdxTags(content: string): DocsAudienceMdxTag[] {
   if (!DOCS_AUDIENCE_TAG_CANDIDATE_PATTERN.test(content)) return [];
-  return findMdxAstAudienceTags(content) ?? findAudienceTags(content, findProtectedRanges(content));
+  return (
+    indexStaticAudienceTags(content) ??
+    findMdxAstAudienceTags(content) ??
+    findAudienceTags(content, findProtectedRanges(content))
+  );
 }
 
 function isAudienceVisible(scopes: DocsAudienceScope[], audience: DocsContentAudience): boolean {
@@ -2210,6 +2286,16 @@ export function findDocsAudienceMdxIssues(content: string): DocsAudienceMdxIssue
   return issues;
 }
 
+// The filesystem source projects the same body twice in succession. Keep this entry private
+// so callers of findDocsAudienceMdxTags can freely mutate their own results.
+let lastProjection: { source: string; tags: DocsAudienceMdxTag[] } | undefined;
+function getProjectionTags(source: string): DocsAudienceMdxTag[] {
+  if (lastProjection?.source === source) return lastProjection.tags;
+  const tags = findDocsAudienceMdxTags(source);
+  lastProjection = source.length <= 1_000_000 ? { source, tags } : undefined;
+  return tags;
+}
+
 /**
  * Resolve MDX into its human or agent projection.
  *
@@ -2233,7 +2319,7 @@ export function resolveDocsAudienceMdxContent(
   let cursor = 0;
   let resolvedTag = false;
 
-  for (const tag of findDocsAudienceMdxTags(content)) {
+  for (const tag of getProjectionTags(content)) {
     const activeScope = scopes.at(-1);
     if (tag.closing && activeScope?.name !== tag.name) continue;
     resolvedTag = true;

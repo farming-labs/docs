@@ -676,6 +676,7 @@ Overview.
         "audience-dynamic",
         "<Audience only={runtimeAudience}>The runtime audience is unsupported.</Audience>",
       ],
+      ["audience-missing", "<Audience>\nNo audience declared.\n</Audience>"],
       ["human", "<Human>Use the interactive setup form.</Human>"],
       ["audience-human", '<Audience only="human">Use the interactive setup form.</Audience>'],
     ] as const;
@@ -686,7 +687,7 @@ Overview.
         join(tmpDir, "app", "docs", slug, "page.mdx"),
         `---
 title: ${slug}
-description: ${slug} page
+description: "実 <Audience> metadata for ${slug}"
 ---
 
 Configure the docs implementation.
@@ -712,17 +713,23 @@ ${audienceBlock}
     expect(missingAgentContext).toEqual([
       "app/docs/audience-dynamic/page.mdx",
       "app/docs/audience-human/page.mdx",
+      "app/docs/audience-missing/page.mdx",
       "app/docs/human/page.mdx",
     ]);
-    expect(report.findings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          file: "app/docs/audience-dynamic/page.mdx",
-          code: "audience-dynamic-only",
-          severity: "warn",
-        }),
-      ]),
-    );
+    expect(report.findings.filter((finding) => finding.code?.startsWith("audience-"))).toEqual([
+      expect.objectContaining({
+        file: "app/docs/audience-dynamic/page.mdx",
+        code: "audience-dynamic-only",
+        line: 8,
+        severity: "warn",
+      }),
+      expect.objectContaining({
+        file: "app/docs/audience-missing/page.mdx",
+        code: "audience-missing-only",
+        line: 8,
+        severity: "warn",
+      }),
+    ]);
   });
 
   function git(args: string[]) {

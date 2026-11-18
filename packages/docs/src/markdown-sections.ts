@@ -7,8 +7,7 @@ import {
   type DocsMarkdownAstNode,
   type DocsMarkdownHeadingAnchor,
 } from "./markdown-headings.js";
-import { createDocsMarkdownParser } from "./markdown-parser.js";
-import remarkGfm from "remark-gfm";
+import { MarkdownSyntaxError, parseMarkdownOutline } from "@farming-labs/inkspan";
 import { createDocsMarkdownSectionCache } from "./markdown-section-cache.js";
 import {
   PAGE_AGENT_CONTRACT_END_MARKER,
@@ -93,16 +92,7 @@ interface DocsMarkdownFallbackPromptTagState {
   quote?: "'" | '"' | "`";
 }
 
-let docsMarkdownMdxProcessor: ReturnType<typeof createDocsMarkdownParser> | undefined;
 const docsMarkdownSections = createDocsMarkdownSectionCache();
-
-function getDocsMarkdownMdxProcessor() {
-  if (!docsMarkdownMdxProcessor) {
-    docsMarkdownMdxProcessor = createDocsMarkdownParser();
-    docsMarkdownMdxProcessor.use(remarkGfm);
-  }
-  return docsMarkdownMdxProcessor;
-}
 
 function readOpeningFence(line: string): Pick<OpenMarkdownFence, "marker" | "length"> | undefined {
   const match = line.match(/^ {0,3}(`{3,}|~{3,})/u);
@@ -545,6 +535,7 @@ function isTopLevelDocsMarkdownMarker(line: string, marker: string): boolean {
 }
 
 function collectGeneratedAgentContractRanges(markdown: string): DocsMarkdownLineRange[] {
+  if (!markdown.includes(PAGE_AGENT_CONTRACT_START_MARKER)) return [];
   const lines = markdown.split(/\r?\n/u);
   const ranges: DocsMarkdownLineRange[] = [];
   let openFence: OpenMarkdownFence | undefined;
@@ -810,9 +801,13 @@ function parseDocsMarkdownAstSections(
 ): DocsMarkdownSection[] | undefined {
   let root: DocsMarkdownAstNode;
   try {
-    root = getDocsMarkdownMdxProcessor().parse(markdown) as DocsMarkdownAstNode;
-  } catch {
-    return undefined;
+    root = {
+      type: "root",
+      children: parseMarkdownOutline(markdown, { format: "mdx", ignoreElements: ["Prompt"] }),
+    };
+  } catch (error) {
+    if (error instanceof MarkdownSyntaxError) return undefined;
+    throw error;
   }
 
   const assignedHeadings = assignDocsMarkdownAstHeadingAnchors(root, {}, (start) =>

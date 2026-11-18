@@ -845,6 +845,21 @@ describe("canonical Markdown heading anchors", () => {
     ]);
   });
 
+  it("recovers the section and anchor when inline JSX is unclosed in a Setext heading", () => {
+    const markdown = "text <b>\nTitle\n---\n\n## Next";
+    expect(
+      parseDocsMarkdownSections(markdown).map(({ title, anchor, startLine, endLine }) => ({
+        title,
+        anchor,
+        startLine,
+        endLine,
+      })),
+    ).toEqual([
+      { title: "text Title", anchor: "text-title", startLine: 1, endLine: 4 },
+      { title: "Next", anchor: "next", startLine: 5, endLine: 5 },
+    ]);
+  });
+
   it("keeps multiline Setext headings canonical in malformed-MDX fallback", () => {
     const malformed = [
       "First *line*",
