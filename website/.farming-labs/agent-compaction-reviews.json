@@ -237,12 +237,12 @@
     },
     {
       "route": "/docs/reference",
-      "sourceHash": "fnv1a64:d4f083e5bde24a80",
+      "sourceHash": "fnv1a64:b6f6ae6d0f359e1c",
       "settingsHash": "fnv1a64:aa433a28ef4afd1f",
-      "outputHash": "fnv1a64:64ee5b0970a339e3",
-      "reviewedAt": "2026-11-18T21:39:56.951Z",
-      "reviewedBy": "Claude",
-      "reason": "Compared the only source change: the new 'Highlighted code in Next.js' section on the reference page. Added a matching paragraph to the curated reference, covering the cache location, what the keys cover, the languages and slow blocks that are never stored, that a custom mdx.codeHighlighter replaces the cache, and the 16,384-block bound."
+      "outputHash": "fnv1a64:f3547eab37003a25",
+      "reviewedAt": "2026-11-18T22:15:06.571Z",
+      "reviewedBy": "Codex",
+      "reason": "Compared the updated reference and its agent version for isolated grammars, embedded language support, cache eligibility and the configurable tokenization limit."
     },
     {
       "route": "/docs/themes",
