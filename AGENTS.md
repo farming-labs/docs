@@ -2,6 +2,22 @@
 
 This repo is **@farming-labs/docs** — an MDX-based documentation framework for Next.js, TanStack Start, Farm.js, SvelteKit, Astro, and Nuxt.
 
+## Maintainer specs
+
+When assigned a change to Copy Markdown on the docs website, read the
+[pilot spec](specs/pages/customization/page-actions.mdx) for the implementation and test.
+Read the `customization/page-actions#copy-markdown` entry in `specs/specs.approved.json`
+for the owner's exact wording. Until the first approval, the file is absent.
+Propose changes in the MDX. Only the owner writes the approval file through Specify.
+
+On assignment or resume, read the approval file in the checkout you are working on.
+During an assigned task, `pnpm --silent run specs:watch` can notify you of changes.
+Re-read the current wording before acting on an event. An approval alone assigns no work.
+Run the linked check first. Fix a mismatch within the assignment, or report that the
+behavior already conforms. Record the audit date and the commit actually checked on
+the matching rule. When editing a rule's wording in MDX, remove its previous audit.
+See the [owner workflow](specs/README.md).
+
 ## Skills (skills.sh / Agent Skills specification)
 
 Skills are under **`skills/farming-labs/`** and divided by topic. Use the skill that matches the task.
