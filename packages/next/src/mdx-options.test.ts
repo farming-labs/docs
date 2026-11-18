@@ -69,9 +69,24 @@ describe("MDX extension hooks", () => {
       "@farming-labs/next/mdx-plugins/rehype-toc",
       [
         "@farming-labs/next/mdx-plugins/rehype-code",
-        { themes: { light: "github-light", dark: "github-dark" } },
+        {
+          themes: { light: "github-light", dark: "github-dark" },
+          cacheDir: expect.stringMatching(
+            /[/\\]\.next[/\\]cache[/\\]farming-labs[/\\]code-highlight$/,
+          ),
+        },
       ],
     ]);
+  });
+
+  it("keeps highlighted code blocks in the cache of a custom distDir", () => {
+    const config = withDocs({ distDir: "build/next" });
+    const options = config.webpack!({ resolve: { alias: {} }, module: { rules: [] } }, {
+      defaultLoaders: { babel: {} },
+    } as any).module.rules[0].use[1].options;
+    expect(options.rehypePlugins[1][1].cacheDir).toBe(
+      join(process.cwd(), "build/next", "cache", "farming-labs", "code-highlight"),
+    );
   });
 
   it("passes the same serializable extension pipeline to Webpack and Turbopack", () => {

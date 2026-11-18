@@ -1,0 +1,1083 @@
+{
+  "summary": {
+    "files": 178,
+    "differences": [],
+    "orderDifferences": [],
+    "withoutShiki": 177,
+    "errors": [
+      "edge/23.mdx: error: Language `unknown-language` not found, you may need to load it first"
+    ],
+    "sequenceShikiStarts": 1
+  },
+  "rows": [
+    {
+      "file": "corpus/0.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/1.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/2.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/3.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/4.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/5.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/6.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/7.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/8.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/9.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/10.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/11.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/12.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/13.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/14.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/15.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/16.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/17.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/18.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/19.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/20.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/21.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/22.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/23.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/24.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/25.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/26.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/27.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/28.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/29.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/30.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/31.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/32.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/33.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/34.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/35.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/36.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/37.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/38.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/39.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/40.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/41.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/42.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/43.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/44.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/45.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/46.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/47.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/48.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/49.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/50.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/51.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/52.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/53.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/54.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/55.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/56.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/57.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/58.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/59.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/60.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/61.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/62.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/63.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/64.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/65.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/66.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/67.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/68.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/69.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/70.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/71.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/72.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/73.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/74.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/75.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/76.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/77.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/78.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/79.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/80.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/81.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/82.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/83.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/84.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/85.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/86.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/87.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/88.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/89.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/90.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/91.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/92.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/93.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/94.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/95.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/96.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/97.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/98.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "corpus/99.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/cli/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/cloud/analytics/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/cloud/deploy/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/cloud/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/configuration/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/contributing/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/agent-primitive/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/ai-chat/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/analytics/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/colors/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/components/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/llms-txt/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/mcp/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/observability/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/og-images/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/page-actions/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/sidebar/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/sitemaps/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/telemetry/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/customization/typography/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/guides/adapter-agent-conformance/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/guides/agent-friendly-docs/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/guides/docs-json/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/guides/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/installation/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/docusaurus/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/fumadocs/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/gitbook/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/mintlify/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/mkdocs/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/nextra/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/starlight/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/migrations/vitepress/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/reference/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/colorful/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/command-grid/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/concrete/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/creating-themes/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/darkbold/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/darksharp/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/default/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/greentree/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/hardline/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/ledger/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/pixel-border/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/shadcn/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/shiny/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/themes/threadline/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "website/src/app/docs/token-efficiency/page.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/0.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/1.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/2.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/3.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/4.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/5.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/6.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/7.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/8.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/9.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/10.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/11.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/12.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/13.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/14.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/15.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/16.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/17.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/18.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/19.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/20.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/21.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/22.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    },
+    {
+      "file": "edge/23.mdx",
+      "same": true,
+      "inOrder": true,
+      "error": "error: Language `unknown-language` not found, you may need to load it first",
+      "cachedShikiStarts": 1
+    },
+    {
+      "file": "edge/24.mdx",
+      "same": true,
+      "inOrder": true,
+      "cachedShikiStarts": 0
+    }
+  ]
+}

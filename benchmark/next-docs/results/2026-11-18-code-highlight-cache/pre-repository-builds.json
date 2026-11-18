@@ -1,0 +1,460 @@
+{
+  "note": "Written by the pre-repository version of code_highlight.py on 403ddb6c with the same plugin code. It has no A/A pair, edits the second heading of page-0001 instead of the first page, and records the 1-minute load average after each build as loadAvg1m. One warmup round is not included.",
+  "node": "v24.21.0",
+  "processor": "Apple M1",
+  "logicalCpus": 8,
+  "pages": 100,
+  "primed": {
+    "entries": 200,
+    "bytes": 1431560
+  },
+  "rows": [
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.43,
+      "compileSeconds": 6.0,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9797,
+      "loadAvg1m": 4.51,
+      "round": 0
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.851,
+      "compileSeconds": 5.4,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4717,
+      "loadAvg1m": 4.53,
+      "round": 0
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.73,
+      "compileSeconds": 6.1,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9006,
+      "loadAvg1m": 4.83,
+      "round": 0
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 5.322,
+      "compileSeconds": 1.885,
+      "mdxFiles": 1,
+      "mdxCpuMs": 217,
+      "loadAvg1m": 4.68,
+      "round": 0
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 4.439,
+      "compileSeconds": 0.853,
+      "mdxFiles": 1,
+      "mdxCpuMs": 526,
+      "loadAvg1m": 4.87,
+      "round": 0
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.555,
+      "compileSeconds": 6.2,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9830,
+      "loadAvg1m": 5.26,
+      "round": 1
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.489,
+      "compileSeconds": 5.9,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9270,
+      "loadAvg1m": 5.51,
+      "round": 1
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.962,
+      "compileSeconds": 5.5,
+      "mdxFiles": 100,
+      "mdxCpuMs": 5121,
+      "loadAvg1m": 5.56,
+      "round": 1
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 4.409,
+      "compileSeconds": 0.891,
+      "mdxFiles": 1,
+      "mdxCpuMs": 532,
+      "loadAvg1m": 5.52,
+      "round": 1
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 4.016,
+      "compileSeconds": 0.7020000000000001,
+      "mdxFiles": 1,
+      "mdxCpuMs": 224,
+      "loadAvg1m": 5.52,
+      "round": 1
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.517,
+      "compileSeconds": 6.0,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9140,
+      "loadAvg1m": 5.48,
+      "round": 2
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.542,
+      "compileSeconds": 6.2,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9805,
+      "loadAvg1m": 5.33,
+      "round": 2
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.849,
+      "compileSeconds": 5.3,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4811,
+      "loadAvg1m": 5.23,
+      "round": 2
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 4.018,
+      "compileSeconds": 0.713,
+      "mdxFiles": 1,
+      "mdxCpuMs": 213,
+      "loadAvg1m": 5.21,
+      "round": 2
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 5.32,
+      "compileSeconds": 1.975,
+      "mdxFiles": 1,
+      "mdxCpuMs": 526,
+      "loadAvg1m": 4.95,
+      "round": 2
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.977,
+      "compileSeconds": 6.2,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9285,
+      "loadAvg1m": 5.9,
+      "round": 3
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.757,
+      "compileSeconds": 5.3,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4673,
+      "loadAvg1m": 6.22,
+      "round": 3
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.237,
+      "compileSeconds": 5.9,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9900,
+      "loadAvg1m": 5.58,
+      "round": 3
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 5.303,
+      "compileSeconds": 1.966,
+      "mdxFiles": 1,
+      "mdxCpuMs": 549,
+      "loadAvg1m": 5.29,
+      "round": 3
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 3.978,
+      "compileSeconds": 0.685,
+      "mdxFiles": 1,
+      "mdxCpuMs": 215,
+      "loadAvg1m": 5.43,
+      "round": 3
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.769,
+      "compileSeconds": 5.2,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4690,
+      "loadAvg1m": 5.67,
+      "round": 4
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.504,
+      "compileSeconds": 6.0,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9259,
+      "loadAvg1m": 7.08,
+      "round": 4
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.245,
+      "compileSeconds": 5.7,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9825,
+      "loadAvg1m": 8.45,
+      "round": 4
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 4.018,
+      "compileSeconds": 0.74,
+      "mdxFiles": 1,
+      "mdxCpuMs": 252,
+      "loadAvg1m": 8.26,
+      "round": 4
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 5.776,
+      "compileSeconds": 2.5,
+      "mdxFiles": 1,
+      "mdxCpuMs": 536,
+      "loadAvg1m": 7.68,
+      "round": 4
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 9.12,
+      "compileSeconds": 5.5,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4833,
+      "loadAvg1m": 8.99,
+      "round": 5
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.273,
+      "compileSeconds": 5.9,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9863,
+      "loadAvg1m": 9.41,
+      "round": 5
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.712,
+      "compileSeconds": 6.1,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9290,
+      "loadAvg1m": 10.62,
+      "round": 5
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 4.221,
+      "compileSeconds": 0.8210000000000001,
+      "mdxFiles": 1,
+      "mdxCpuMs": 515,
+      "loadAvg1m": 10.49,
+      "round": 5
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 5.1,
+      "compileSeconds": 1.687,
+      "mdxFiles": 1,
+      "mdxCpuMs": 213,
+      "loadAvg1m": 9.97,
+      "round": 5
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.522,
+      "compileSeconds": 6.1,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9476,
+      "loadAvg1m": 12.57,
+      "round": 6
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.791,
+      "compileSeconds": 5.4,
+      "mdxFiles": 100,
+      "mdxCpuMs": 5012,
+      "loadAvg1m": 14.18,
+      "round": 6
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.348,
+      "compileSeconds": 5.7,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9156,
+      "loadAvg1m": 14.84,
+      "round": 6
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 5.317,
+      "compileSeconds": 1.782,
+      "mdxFiles": 1,
+      "mdxCpuMs": 218,
+      "loadAvg1m": 14.3,
+      "round": 6
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 4.219,
+      "compileSeconds": 0.834,
+      "mdxFiles": 1,
+      "mdxCpuMs": 540,
+      "loadAvg1m": 13.71,
+      "round": 6
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.571,
+      "compileSeconds": 6.1,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9904,
+      "loadAvg1m": 14.44,
+      "round": 7
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.441,
+      "compileSeconds": 5.8,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9148,
+      "loadAvg1m": 15.47,
+      "round": 7
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.982,
+      "compileSeconds": 5.3,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4713,
+      "loadAvg1m": 15.61,
+      "round": 7
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 5.569,
+      "compileSeconds": 1.974,
+      "mdxFiles": 1,
+      "mdxCpuMs": 554,
+      "loadAvg1m": 14.44,
+      "round": 7
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 4.654,
+      "compileSeconds": 0.777,
+      "mdxFiles": 1,
+      "mdxCpuMs": 211,
+      "loadAvg1m": 13.53,
+      "round": 7
+    },
+    {
+      "label": "base-cold",
+      "wallSeconds": 9.521,
+      "compileSeconds": 5.9,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9144,
+      "loadAvg1m": 14.54,
+      "round": 8
+    },
+    {
+      "label": "cand-cold",
+      "wallSeconds": 9.25,
+      "compileSeconds": 5.8,
+      "mdxFiles": 100,
+      "mdxCpuMs": 9830,
+      "loadAvg1m": 14.02,
+      "round": 8
+    },
+    {
+      "label": "cand-kept",
+      "wallSeconds": 8.585,
+      "compileSeconds": 5.3,
+      "mdxFiles": 100,
+      "mdxCpuMs": 4741,
+      "loadAvg1m": 14.2,
+      "round": 8
+    },
+    {
+      "label": "cand-edit",
+      "wallSeconds": 4.005,
+      "compileSeconds": 0.715,
+      "mdxFiles": 1,
+      "mdxCpuMs": 212,
+      "loadAvg1m": 13.38,
+      "round": 8
+    },
+    {
+      "label": "base-edit",
+      "wallSeconds": 7.965,
+      "compileSeconds": 1.782,
+      "mdxFiles": 1,
+      "mdxCpuMs": 528,
+      "loadAvg1m": 12.39,
+      "round": 8
+    }
+  ],
+  "summary": {
+    "base-cold": {
+      "wallMedian": 9.517,
+      "wallMax": 9.977,
+      "compileMedian": 6.0,
+      "compileMax": 6.2,
+      "mdxCpuMsMedian": 9156,
+      "n": 9
+    },
+    "base-edit": {
+      "wallMedian": 5.303,
+      "wallMax": 7.965,
+      "compileMedian": 1.782,
+      "compileMax": 2.5,
+      "mdxCpuMsMedian": 532,
+      "n": 9
+    },
+    "cand-cold": {
+      "wallMedian": 9.43,
+      "wallMax": 9.571,
+      "compileMedian": 6.0,
+      "compileMax": 6.2,
+      "mdxCpuMsMedian": 9830,
+      "n": 9
+    },
+    "cand-edit": {
+      "wallMedian": 4.018,
+      "wallMax": 5.322,
+      "compileMedian": 0.74,
+      "compileMax": 1.885,
+      "mdxCpuMsMedian": 215,
+      "n": 9
+    },
+    "cand-kept": {
+      "wallMedian": 8.849,
+      "wallMax": 9.12,
+      "compileMedian": 5.3,
+      "compileMax": 5.5,
+      "mdxCpuMsMedian": 4741,
+      "n": 9
+    }
+  }
+}
