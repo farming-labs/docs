@@ -798,6 +798,21 @@ describe("canonical Markdown heading anchors", () => {
     );
   });
 
+  it.each(["\n", "\r\n"])(
+    "starts sections after the first closing frontmatter line (%j)",
+    (eol) => {
+      const body = ["# Setup", "", "🌱", "", "---", "", "## Next"].join(eol);
+      const source = ["\uFEFF---", "title: Setup", "---", body].join(eol);
+
+      expect(parseDocsMarkdownSections(source)).toEqual(parseDocsMarkdownSections(body));
+      expect(findDocsMarkdownSection(source, "setup")).toMatchObject({
+        startLine: 1,
+        content: expect.stringContaining("---"),
+      });
+      expect(findDocsMarkdownSection(source, "next")).toMatchObject({ startLine: 7 });
+    },
+  );
+
   it("keeps frontmatter out of section discovery and falls back for malformed MDX", () => {
     const withFrontmatter = ["---", "title: Not a heading", "---", "# Visible"].join("\n");
     const withBomFrontmatter = `\uFEFF${withFrontmatter}`;

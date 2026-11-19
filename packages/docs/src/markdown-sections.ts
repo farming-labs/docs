@@ -791,8 +791,8 @@ function parseDocsMarkdownSectionsFallback(
 }
 
 function stripDocsMarkdownSectionFrontmatter(markdown: string): string {
-  const frontmatter = markdown.match(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)([\s\S]*)$/u);
-  return frontmatter?.[1] ?? markdown;
+  const frontmatter = /^\uFEFF?---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/u.exec(markdown);
+  return frontmatter ? markdown.slice(frontmatter[0].length) : markdown;
 }
 
 function parseDocsMarkdownAstSections(
