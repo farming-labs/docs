@@ -855,8 +855,10 @@ function parseDocsMarkdownAstSections(
 
 export function parseDocsMarkdownSections(markdown: string): DocsMarkdownSection[] {
   const body = stripDocsMarkdownSectionFrontmatter(markdown);
-  const cached = docsMarkdownSections.get(body);
-  if (cached) return cached;
+  return docsMarkdownSections.get(body) ?? parseAndCacheSections(body);
+}
+
+function parseAndCacheSections(body: string): DocsMarkdownSection[] {
   const generatedContractRanges = collectGeneratedAgentContractRanges(body);
   const sections =
     parseDocsMarkdownAstSections(body, generatedContractRanges) ??
@@ -869,7 +871,18 @@ export function findDocsMarkdownSection(
   markdown: string,
   requestedSection: string,
 ): DocsMarkdownSection | undefined {
-  const sections = parseDocsMarkdownSections(markdown);
+  const body = stripDocsMarkdownSectionFrontmatter(markdown);
+  const cached = docsMarkdownSections.find(body, (sections) =>
+    selectDocsMarkdownSection(sections, requestedSection),
+  );
+  if (cached !== null) return cached;
+  return selectDocsMarkdownSection(parseAndCacheSections(body), requestedSection);
+}
+
+function selectDocsMarkdownSection<T extends Pick<DocsMarkdownSection, "title" | "anchor">>(
+  sections: readonly T[],
+  requestedSection: string,
+): T | undefined {
   const rawSelector = requestedSection.trim();
   const rawAnchor = sections.find((section) => section.anchor === rawSelector);
   if (rawAnchor) return rawAnchor;

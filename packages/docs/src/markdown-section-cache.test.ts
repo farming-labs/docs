@@ -7,6 +7,33 @@ const sections: DocsMarkdownSection[] = [
 ];
 
 describe("bounded Markdown section cache", () => {
+  it("selects one span and returns an independent section with normalized content", () => {
+    const cache = createDocsMarkdownSectionCache({ maxEntries: 2 });
+    const source = "# A\r\n## B\r\nbody\r\n";
+    const child = {
+      ...sections[0],
+      title: "B",
+      anchor: "b",
+      level: 2,
+      content: "## B\nbody",
+      startLine: 2,
+      endLine: 3,
+    };
+    cache.set(source, [{ ...sections[0], content: "# A\n## B\nbody", endLine: 3 }, child]);
+    cache.set("# A", sections);
+    const selected = cache.find(source, (spans) => {
+      expect(spans.every((span) => !("content" in span))).toBe(true);
+      return spans.find((span) => span.anchor === "b");
+    });
+    expect(selected).toEqual(child);
+    selected!.title = "mutated";
+    cache.set("  # A", sections);
+    expect(cache.get("# A")).toBeUndefined();
+    expect(cache.find(source, (spans) => spans[1])).toEqual(child);
+    expect(cache.find(source, () => undefined)).toBeUndefined();
+    expect(cache.find("uncached source", () => undefined)).toBeNull();
+  });
+
   it("isolates both the stored input and returned arrays and sections", () => {
     const cache = createDocsMarkdownSectionCache();
     const input = sections.map((section) => ({ ...section }));

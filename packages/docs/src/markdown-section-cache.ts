@@ -1,6 +1,15 @@
 import type { DocsMarkdownSection } from "./markdown-sections.js";
 
-type CachedSection = Omit<DocsMarkdownSection, "content"> & { start: number; end: number };
+type CachedSection = Readonly<
+  Omit<DocsMarkdownSection, "content"> & { start: number; end: number }
+>;
+
+function readSection(
+  source: string,
+  { start, end, ...section }: CachedSection,
+): DocsMarkdownSection {
+  return { ...section, content: source.slice(start, end).trim() };
+}
 
 /** Retain source spans instead of duplicating nested section text in the cache. */
 export function createDocsMarkdownSectionCache({
@@ -16,16 +25,29 @@ export function createDocsMarkdownSectionCache({
   >();
   let characters = 0;
 
-  return {
-    get(source: string): DocsMarkdownSection[] | undefined {
-      const entry = entries.get(source);
-      if (!entry) return undefined;
+  function getEntry(source: string) {
+    const entry = entries.get(source);
+    if (entry) {
       entries.delete(source);
       entries.set(source, entry);
-      return entry.sections.map(({ start, end, ...section }) => ({
-        ...section,
-        content: entry.source.slice(start, end).trim(),
-      }));
+    }
+    return entry;
+  }
+
+  return {
+    get(source: string): DocsMarkdownSection[] | undefined {
+      const entry = getEntry(source);
+      return entry?.sections.map((section) => readSection(entry.source, section));
+    },
+    /** Null means the source needs parsing. Undefined means the cached source has no match. */
+    find(
+      source: string,
+      select: (sections: readonly CachedSection[]) => CachedSection | undefined,
+    ): DocsMarkdownSection | undefined | null {
+      const entry = getEntry(source);
+      if (!entry) return null;
+      const section = select(entry.sections);
+      return section && readSection(entry.source, section);
     },
     set(source: string, sections: DocsMarkdownSection[]): void {
       const previous = entries.get(source);
