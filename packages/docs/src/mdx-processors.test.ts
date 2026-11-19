@@ -5,7 +5,7 @@ vi.mock("./markdown-parser.js", async (importOriginal) => {
   return { ...actual, createDocsMarkdownParser: vi.fn(actual.createDocsMarkdownParser) };
 });
 
-vi.mock("@farming-labs/inkspan", { spy: true });
+vi.mock("inkspan", { spy: true });
 
 beforeEach(() => {
   vi.resetModules();
@@ -75,7 +75,7 @@ describe("on-demand MDX processors", () => {
 
   it("parses each new source while keeping heading state local to each document", async () => {
     const { parseDocsMarkdownSections } = await import("./markdown-sections.js");
-    const { parseMarkdownOutline } = await import("@farming-labs/inkspan");
+    const { parseMarkdownOutline } = await import("inkspan");
 
     expect(parseMarkdownOutline).not.toHaveBeenCalled();
     const first = parseDocsMarkdownSections("# Setup\n\nFirst.\n\n## Setup\n\nMore.");
@@ -91,7 +91,7 @@ describe("on-demand MDX processors", () => {
     "reuses unchanged section results and sees edits (fallback: %s)",
     async (fallback) => {
       const { parseDocsMarkdownSections } = await import("./markdown-sections.js");
-      const { parseMarkdownOutline } = await import("@farming-labs/inkspan");
+      const { parseMarkdownOutline } = await import("inkspan");
       const source = "# Setup\n\nOriginal.\n\n## Setup\n\nMore." + (fallback ? "\n\n{" : "");
       const expected = parseDocsMarkdownSections(source);
       expect(parseMarkdownOutline).toHaveBeenCalledTimes(1);

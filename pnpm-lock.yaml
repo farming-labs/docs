@@ -390,9 +390,6 @@ importers:
       '@clack/prompts':
         specifier: ^1.7.0
         version: 1.7.0
-      '@farming-labs/inkspan':
-        specifier: 0.1.0-beta.3
-        version: 0.1.0-beta.3
       '@modelcontextprotocol/server':
         specifier: 2.3.0
         version: 2.3.0
@@ -405,6 +402,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      inkspan:
+        specifier: 0.1.0
+        version: 0.1.0
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -1798,10 +1798,6 @@ packages:
   '@farm.js/tunnel@0.1.2':
     resolution: {integrity: sha512-9Rmep2U0eCCWx6zwLb1VAfjbYfsbGtXBsMZusSvYkbCV+3eEcz6+GhfOi7A8gfp7JiAdkiOpmGhmaJnc8wEb1A==}
     engines: {node: '>=20.0.0'}
-
-  '@farming-labs/inkspan@0.1.0-beta.3':
-    resolution: {integrity: sha512-VBL1ld1ncpBWNm/amRQSwrEMyIo8Bl4tETLUJO9SvIJvBBc02RqAb/UiFAtqRNf7Bp9l4wsu+rk3XVaudE2wgQ==}
-    engines: {node: '>=20'}
 
   '@farming-labs/orm-d1@0.0.66':
     resolution: {integrity: sha512-bjjk9fK4BepblqoUM1ONCLf8xnlqD0/JCK13A0+M7F3e2O+/19/37qq3XtN5N0YfgeGZVi+4dSQ4RpnSJzSvRQ==}
@@ -6605,6 +6601,10 @@ packages:
     resolution: {integrity: sha512-QQnnxNyfvmHFIsj7gkPcYymR8Jdw/o7mp5ZFihxn6h8Ci6fh3Dx4E1gPjpQEpIuPo9XVNY/ZUwh4BPMjGyL01g==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
+  inkspan@0.1.0:
+    resolution: {integrity: sha512-qnxLnUe6W/WMUs09FtPECltD56CUW0GGl7exWk5RasKSHSP8mGswFFLe8bgb9eh8BbgSb2Lmpx0aKut2+u9wJA==}
+    engines: {node: '>=20'}
+
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
 
@@ -11014,8 +11014,6 @@ snapshots:
       '@farm.js/tunnel-linux-x64-musl': 0.1.2
       '@farm.js/tunnel-win32-arm64-msvc': 0.1.2
       '@farm.js/tunnel-win32-x64-msvc': 0.1.2
-
-  '@farming-labs/inkspan@0.1.0-beta.3': {}
 
   '@farming-labs/orm-d1@0.0.66':
     dependencies:
@@ -16336,6 +16334,8 @@ snapshots:
   inherits@2.0.4: {}
 
   ini@4.1.1: {}
+
+  inkspan@0.1.0: {}
 
   inline-style-parser@0.2.7: {}
 

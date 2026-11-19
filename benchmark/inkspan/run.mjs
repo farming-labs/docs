@@ -53,9 +53,7 @@ if (mode === "worker") {
   const pages = await mcp
     .createFilesystemDocsMcpSource({ rootDir: root, contentDir: "website/src/app/docs" })
     .getPages();
-  const packageEntry = createRequire(join(consumer, "package.json")).resolve(
-    "@farming-labs/inkspan",
-  );
+  const packageEntry = createRequire(join(consumer, "package.json")).resolve("inkspan");
   const prior = previousConsumer && createRequire(join(previousConsumer, "package.json"));
   const previousEntries = prior && {
     package: prior.resolve("@farming-labs/markdown-sections"),

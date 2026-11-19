@@ -7,7 +7,7 @@ import {
   type DocsMarkdownAstNode,
   type DocsMarkdownHeadingAnchor,
 } from "./markdown-headings.js";
-import { MarkdownSyntaxError, parseMarkdownOutline } from "@farming-labs/inkspan";
+import { MarkdownSyntaxError, parseMarkdownOutline } from "inkspan";
 import { createDocsMarkdownSectionCache } from "./markdown-section-cache.js";
 import {
   PAGE_AGENT_CONTRACT_END_MARKER,

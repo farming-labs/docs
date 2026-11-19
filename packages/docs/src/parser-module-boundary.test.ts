@@ -52,12 +52,12 @@ describe("published parse-only entrypoints", () => {
           "remark-mdx",
           "remark-gfm",
           "unified",
-          "@farming-labs/inkspan",
+          "inkspan",
         ]) {
           expect([...external]).not.toContain(dependency);
         }
       } else {
-        expect([...external]).toContain("@farming-labs/inkspan");
+        expect([...external]).toContain("inkspan");
         if (entry !== "markdown-rendering") expect([...external]).toContain("remark-parse");
       }
     },

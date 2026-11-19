@@ -1,4 +1,4 @@
-import { indexMarkdown, MarkdownSyntaxError } from "@farming-labs/inkspan";
+import { indexMarkdown, MarkdownSyntaxError } from "inkspan";
 import { createDocsMarkdownParser } from "./markdown-parser.js";
 import { createDocsTextTransformCache } from "./text-transform-cache.js";
 import { resolveDocsAudienceExposure, type DocsContentAudience } from "./audience-exposure.js";
