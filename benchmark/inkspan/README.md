@@ -85,3 +85,18 @@ node benchmark/inkspan/section-lookups.mjs "$baseline" "$baseline-control" "$can
 ```
 
 The harness compares complete section lists and individual lookups before timing. Each implementation gets three warmups and 24 timed samples over all six execution orders. Warm batches repeat 20 times for successful lookups and four times for the mixed workload. Each cold sample appends a unique paragraph to force a fresh parse. The output includes all samples and a corpus hash. No samples were discarded. Response time for a deployed search or MCP request was outside this measurement.
+
+### Returning one cached section
+
+A lookup now selects the requested heading from cached metadata before slicing its content. Against commit `e414ff4b78b105e321676d2623fe4ea64f09afd1`, this saved about 0.5 ms per 318 successful lookups in both runs, or 1.6 microseconds per lookup. Both runs used the harness, corpus, hardware and Node version above. Each cell is median / p95 in milliseconds.
+
+| Run | Workload | Baseline | Identical control | Selected section |
+| --- | --- | ---: | ---: | ---: |
+| 1 | 318 successful lookups | 4.68 / 4.86 | 4.65 / 4.86 | 4.15 / 4.35 |
+| 2 | 318 successful lookups | 4.70 / 5.04 | 4.74 / 5.32 | 4.19 / 5.81 |
+| 1 | 424 lookups, including 106 misses | 6.98 / 7.25 | 7.01 / 7.47 | 6.34 / 6.57 |
+| 2 | 424 lookups, including 106 misses | 7.29 / 8.02 | 7.28 / 8.19 | 6.60 / 7.09 |
+| 1 | Parse 106 uncached documents | 169.24 / 223.37 | 169.42 / 196.66 | 175.20 / 252.80 |
+| 2 | Parse 106 uncached documents | 211.01 / 319.72 | 196.35 / 270.30 | 189.49 / 260.95 |
+
+The median improvement reproduced on both warm workloads. The p95 for successful lookups and the cold-parse timings changed direction between runs.

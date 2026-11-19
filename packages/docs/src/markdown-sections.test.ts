@@ -265,6 +265,23 @@ describe("canonical Markdown heading anchors", () => {
     }
   });
 
+  it("returns the same nested section on cold and cached lookups", () => {
+    const markdown =
+      "---\r\ntitle: Page\r\n---\r\n# Parent\r\n## Nested [#custom]\r\nChild body.\r\n";
+    const cold = findDocsMarkdownSection(markdown, "/docs/page#custom");
+    expect(cold).toMatchObject({
+      title: "Nested",
+      anchor: "custom",
+      content: "## Nested [#custom]\nChild body.",
+    });
+    expect(findDocsMarkdownSection(markdown, "#missing")).toBeUndefined();
+    const cached = findDocsMarkdownSection(markdown, "Nested");
+    expect(cached).toEqual(cold);
+    cached!.content = "edited by caller";
+    expect(parseDocsMarkdownSections(markdown)[1]).toEqual(cold);
+    expect(findDocsMarkdownSection(markdown, "#CUSTOM")).toEqual(cold);
+  });
+
   it("uses visible inline labels and resolves encoded fragments", () => {
     const markdown = [
       "## [Install the CLI](https://example.com) & `verify`",
