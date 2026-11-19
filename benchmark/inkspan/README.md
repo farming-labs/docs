@@ -111,3 +111,18 @@ A lookup now selects the requested heading from cached metadata before slicing i
 | 2 | Parse 106 uncached documents | 211.01 / 319.72 | 196.35 / 270.30 | 189.49 / 260.95 |
 
 The median improvement reproduced on both warm workloads. The p95 for successful lookups and the cold-parse timings changed direction between runs.
+
+### Stopping at the closing frontmatter delimiter
+
+Each section lookup strips a leading YAML header before checking the section cache. Ending the match at the closing delimiter avoids scanning the body again. Across 53 website pages and 53 agent sidecars, the median for 318 successful lookups fell from 4.37–4.40 ms to 1.84 ms in two runs, about 8 microseconds saved per lookup. The cold-parse medians differed from their controls by at most 1.1%.
+
+| Run | Workload | Baseline | Identical control | Prefix match |
+| --- | --- | ---: | ---: | ---: |
+| 1 | 318 successful lookups | 4.40 / 4.50 | 4.41 / 4.84 | 1.84 / 1.90 |
+| 1 | 424 lookups, including 106 misses | 6.27 / 6.41 | 6.28 / 6.48 | 2.91 / 3.02 |
+| 1 | Parse 106 uncached documents | 139.43 / 144.57 | 139.50 / 146.19 | 138.80 / 146.95 |
+| 2 | 318 successful lookups | 4.37 / 4.44 | 4.38 / 4.54 | 1.84 / 1.90 |
+| 2 | 424 lookups, including 106 misses | 6.28 / 6.39 | 6.27 / 6.36 | 2.91 / 3.01 |
+| 2 | Parse 106 uncached documents | 139.23 / 141.65 | 139.76 / 143.29 | 138.25 / 140.16 |
+
+Each cell is median / p95 in milliseconds. To reproduce, use the section lookup command above with baseline commit `8d6929a7984ebc05458bcf0c99d60f8767a63b56`, a second copy of its packed files as the control, and the packed candidate. Both runs used Node 24.21.0 on an Apple M1 running macOS 26.2, with three warmups and 24 interleaved measurements per variant. The harness compared section lists and selected results before timing.
