@@ -10,7 +10,7 @@ import {
 import { specifyCommands } from "./cli/specify-commands.js";
 import { extractCodeBlocksFromMarkdown } from "./code-blocks.js";
 import {
-  findDocsAudienceMdxTags,
+  getCachedAudienceTags,
   resolveDocsAudienceMdxContent,
   type DocsAudienceMdxTag,
 } from "./audience.js";
@@ -543,7 +543,7 @@ export function extractAgentBlocks(
   options: { sourcePath?: string; route?: string } = {},
 ): AgentBlockOccurrence[] {
   const sourcePath = options.sourcePath ?? "unknown";
-  const tags = findDocsAudienceMdxTags(source);
+  const tags = getCachedAudienceTags(source);
   const blocks: AgentBlockOccurrence[] = [];
   const scopes: AgentContextScope[] = [];
   let nextScopeId = 1;
@@ -1326,7 +1326,7 @@ function preserveLineBreaksOnly(value: string): string {
 
 /** Agent projection used for command discovery that keeps original source line numbers stable. */
 function projectAgentCommandSource(source: string): string {
-  const tags = findDocsAudienceMdxTags(source);
+  const tags = getCachedAudienceTags(source);
   if (tags.length === 0) return source;
 
   const scopes: Array<Pick<DocsAudienceMdxTag, "name" | "only">> = [];

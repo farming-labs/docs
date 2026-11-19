@@ -67,6 +67,17 @@ node benchmark/inkspan/audience.mjs "$baseline" "$candidate" "$bench_dir/review.
 git worktree remove "$bench_dir/previous"
 ```
 
+## Reusing audience tags during page analysis
+
+On 53 pages with 53 agent sidecars, sharing tag discovery between agent projection, block extraction and command discovery reduced the median packed `docs review` time by 26%. Both builds used Inkspan 0.1.1. The complete JSON report matched on every run, including all 14 findings. A separate trace of the analyzer counted 211 tag discoveries before the change and 106 after it, one per distinct source.
+
+| Operation | Previous median / p95 (ms) | Shared tags median / p95 (ms) | Previous repeat median / p95 (ms) |
+| --- | ---: | ---: | ---: |
+| Complete `docs review` process | 3416 / 3983 | 2540 / 2703 | 3392 / 6011 |
+| Audience validation on whole files | 591 / 1022 | 583 / 2163 | 586 / 1243 |
+
+Use the review fixture and `audience.mjs` command above with baseline commit `ed31055c18ec399a249caf185f7a63cfb71867da` and the packed candidate. The run used an Apple M1, macOS 26.2 and Node 24.21.0, with one warmup and nine interleaved measurements per variant. The two baseline medians for the full command differed by 0.7%. Standalone validation uses its own parser pass and had a higher p95 in the candidate run.
+
 ## Section lookups by anchor and title
 
 On an Apple M1 running macOS 26.2 and Node 24.21.0, plain-text heading cleanup reduced the median for 424 cached section lookups by 21%. This workload asks for three existing anchors and one missing selector on each of 53 authored pages and 53 generated agent documents. A miss falls through to title matching. The 25% miss rate is a benchmark input. Successful anchor lookups and uncached parsing had similar medians across the implementations.
