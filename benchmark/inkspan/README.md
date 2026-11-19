@@ -66,3 +66,22 @@ git -C "$site" -c commit.gpgsign=false commit -qm corpus
 node benchmark/inkspan/audience.mjs "$baseline" "$candidate" "$bench_dir/review.json" "$site"
 git worktree remove "$bench_dir/previous"
 ```
+
+## Section lookups by anchor and title
+
+On an Apple M1 running macOS 26.2 and Node 24.21.0, plain-text heading cleanup reduced the median for 424 cached section lookups by 21%. This workload asks for three existing anchors and one missing selector on each of 53 authored pages and 53 generated agent documents. A miss falls through to title matching. The 25% miss rate is a benchmark input. Successful anchor lookups and uncached parsing had similar medians across the implementations.
+
+| Workload | Baseline median / p95 (ms) | Identical control | Plain-text heading cleanup |
+| --- | ---: | ---: | ---: |
+| 318 successful lookups | 8.04 / 15.49 | 9.37 / 16.00 | 8.09 / 16.79 |
+| 424 lookups, including 106 misses | 11.84 / 20.24 | 12.56 / 17.57 | 9.37 / 19.62 |
+| Parse 106 uncached documents | 144.12 / 168.66 | 144.43 / 164.26 | 143.82 / 174.38 |
+
+Use `a0dc4434b57f61f2ccff8dbf6370901d4f24ebf2` for the baseline. Build it and pack the candidate as in the integration benchmark instructions above. The control is a second copy of the baseline's built files next to its original `dist` so both resolve the same installed dependencies.
+
+```sh
+cp -R "$baseline" "$baseline-control"
+node benchmark/inkspan/section-lookups.mjs "$baseline" "$baseline-control" "$candidate" > "$bench_dir/section-lookups.json"
+```
+
+The harness compares complete section lists and individual lookups before timing. Each implementation gets three warmups and 24 timed samples over all six execution orders. Warm batches repeat 20 times for successful lookups and four times for the mixed workload. Each cold sample appends a unique paragraph to force a fresh parse. The output includes all samples and a corpus hash. No samples were discarded. Response time for a deployed search or MCP request was outside this measurement.

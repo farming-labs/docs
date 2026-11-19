@@ -287,6 +287,8 @@ function cleanDocsMarkdownHeadingLabelWithReferences(
   value: string,
   definedReferences?: ReadonlySet<string>,
 ): string {
+  if (!/[^A-Za-z0-9 .,():?-]/u.test(value)) return value.trim().replace(/ {2,}/g, " ");
+
   const codeSpans = protectDocsMarkdownCodeSpans(value);
   const escapes = protectDocsMarkdownEscapes(codeSpans.value);
   const visible = stripDocsMarkdownTags(
