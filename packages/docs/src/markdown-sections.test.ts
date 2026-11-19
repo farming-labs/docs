@@ -252,6 +252,19 @@ describe("canonical Markdown heading anchors", () => {
     ]);
   });
 
+  it("finds a section by its plain title when its explicit anchor differs", () => {
+    const markdown = "## CLI v2.0:   setup, options (A-Z)? [#cli-setup]\n\nUse the CLI.";
+    const expected = findDocsMarkdownSection(markdown, "#cli-setup");
+    expect(expected?.title).toBe("CLI v2.0: setup, options (A-Z)?");
+    for (const selector of [
+      "  cli v2.0:   setup, options (a-z)?  ",
+      "CLI v2.0:\u00a0setup, options (A-Z)?",
+      "**CLI** v2.0: setup, options (A-Z)?",
+    ]) {
+      expect(findDocsMarkdownSection(markdown, selector)).toEqual(expected);
+    }
+  });
+
   it("uses visible inline labels and resolves encoded fragments", () => {
     const markdown = [
       "## [Install the CLI](https://example.com) & `verify`",
