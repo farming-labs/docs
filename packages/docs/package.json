@@ -119,7 +119,7 @@
     "@scalar/core": "^0.4.3",
     "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
-    "inkspan": "0.1.0-beta.4",
+    "inkspan": "0.1.0",
     "jiti": "^2.7.0",
     "jsonpath-rfc9535": "^1.3.0",
     "parse-entities": "^4.0.2",
