@@ -3,6 +3,8 @@ import { defineConfig } from "tsdown";
 export default defineConfig({
   entry: [
     "src/index.ts",
+    // The packed audience benchmark calls tag discovery directly.
+    "src/audience.ts",
     "src/config.ts",
     "src/server.ts",
     "src/build.ts",

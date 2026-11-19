@@ -1,12 +1,15 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { indexMarkdown } from "inkspan";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   analyzeAgentUsefulness,
   extractAgentBlocks,
   type AgentUsefulnessPage,
 } from "./agent-usefulness.js";
+
+vi.mock("inkspan", { spy: true });
 
 describe("extractAgentBlocks", () => {
   it("extracts inline and multiline blocks while ignoring fenced examples", () => {
@@ -247,6 +250,25 @@ describe("analyzeAgentUsefulness", () => {
 
   afterEach(() => {
     rmSync(rootDir, { recursive: true, force: true });
+  });
+
+  it("indexes static audience wrappers once across projection, block and command analysis", () => {
+    const source = [
+      "<Human>",
+      "Run `pnpm hidden`.",
+      "</Human>",
+      "<Agent>",
+      "```sh",
+      "pnpm test",
+      "```",
+      "</Agent>",
+    ].join("\n");
+    vi.mocked(indexMarkdown).mockClear();
+    const report = analyzeAgentUsefulness({ rootDir, pages: [page("reuse", source)] });
+
+    expect(report.metrics.agentBlocks.total).toBe(1);
+    expect(report.metrics.commands.total).toBe(1);
+    expect(indexMarkdown).toHaveBeenCalledTimes(1);
   });
 
   it("detects exact duplicates, repeated boilerplate, and generic blocks", () => {

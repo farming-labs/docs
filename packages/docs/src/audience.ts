@@ -2286,13 +2286,13 @@ export function findDocsAudienceMdxIssues(content: string): DocsAudienceMdxIssue
   return issues;
 }
 
-// The filesystem source projects the same body twice in succession. Keep this entry private
-// so callers of findDocsAudienceMdxTags can freely mutate their own results.
-let lastProjection: { source: string; tags: DocsAudienceMdxTag[] } | undefined;
-function getProjectionTags(source: string): DocsAudienceMdxTag[] {
-  if (lastProjection?.source === source) return lastProjection.tags;
+let lastAudienceTags: { source: string; tags: DocsAudienceMdxTag[] } | undefined;
+
+/** @internal Projections and page analysis share these tags. Public discovery returns owned tags. */
+export function getCachedAudienceTags(source: string): readonly Readonly<DocsAudienceMdxTag>[] {
+  if (lastAudienceTags?.source === source) return lastAudienceTags.tags;
   const tags = findDocsAudienceMdxTags(source);
-  lastProjection = source.length <= 1_000_000 ? { source, tags } : undefined;
+  lastAudienceTags = source.length <= 1_000_000 ? { source, tags } : undefined;
   return tags;
 }
 
@@ -2319,7 +2319,7 @@ export function resolveDocsAudienceMdxContent(
   let cursor = 0;
   let resolvedTag = false;
 
-  for (const tag of getProjectionTags(content)) {
+  for (const tag of getCachedAudienceTags(content)) {
     const activeScope = scopes.at(-1);
     if (tag.closing && activeScope?.name !== tag.name) continue;
     resolvedTag = true;
