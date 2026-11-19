@@ -403,8 +403,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       inkspan:
-        specifier: 0.1.0
-        version: 0.1.0
+        specifier: 0.1.1
+        version: 0.1.1
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
@@ -6601,8 +6601,8 @@ packages:
     resolution: {integrity: sha512-QQnnxNyfvmHFIsj7gkPcYymR8Jdw/o7mp5ZFihxn6h8Ci6fh3Dx4E1gPjpQEpIuPo9XVNY/ZUwh4BPMjGyL01g==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  inkspan@0.1.0:
-    resolution: {integrity: sha512-qnxLnUe6W/WMUs09FtPECltD56CUW0GGl7exWk5RasKSHSP8mGswFFLe8bgb9eh8BbgSb2Lmpx0aKut2+u9wJA==}
+  inkspan@0.1.1:
+    resolution: {integrity: sha512-j5/CcYERGvAS+xfxvZV6eWWlv3P+pLuVbX7vUvgDQbnAAPubaJ8eJoMaHYqOq/HAEEWvprt0vAaDMwSWlMDRbQ==}
     engines: {node: '>=20'}
 
   inline-style-parser@0.2.7:
@@ -16335,7 +16335,7 @@ snapshots:
 
   ini@4.1.1: {}
 
-  inkspan@0.1.0: {}
+  inkspan@0.1.1: {}
 
   inline-style-parser@0.2.7: {}
 
