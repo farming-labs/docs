@@ -63,9 +63,7 @@ describe("filesystem docs navigation", () => {
       .filter((file) => file.startsWith(root));
     expect(sources).toHaveLength(9);
     expect(new Set(sources).size).toBe(sources.length);
-    const statPaths = stat.mock.calls.map(([file]) => String(file));
-    expect(statPaths).toHaveLength(11);
-    expect(new Set(statPaths).size).toBe(statPaths.length);
+    expect(stat).not.toHaveBeenCalled();
   });
 
   it.each(["alphabetical", "numeric"] as const)(
