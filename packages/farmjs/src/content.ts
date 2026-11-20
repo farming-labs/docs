@@ -231,7 +231,7 @@ export function loadDocsNavTree(
   const readFrontmatter: ReadNavFrontmatter = (filePath) => {
     const cached = frontmatter.get(filePath);
     if (cached) return cached;
-    const { data } = matter(fs.readFileSync(filePath, "utf-8"));
+    const { data } = matter(fs.readFileSync(filePath));
     frontmatter.set(filePath, data);
     return data;
   };
@@ -258,16 +258,17 @@ type ReadNavFrontmatter = (filePath: string) => Record<string, unknown>;
 
 function buildNavNode(
   dir: string,
-  name: string,
+  file: fs.Dirent,
   slugParts: string[],
   entry: string,
   readFrontmatter: ReadNavFrontmatter,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   childSlugOrder?: OrderingItem[],
-  knownStat?: fs.Stats,
+  knownStat?: fs.Stats | fs.Dirent,
 ): NavNode | null {
+  const name = file.name;
   const full = path.join(dir, name);
-  const stat = knownStat ?? fs.statSync(full);
+  const stat = knownStat ?? (file.isSymbolicLink() ? fs.statSync(full) : file);
 
   if (stat.isFile()) {
     if (name === "agent.md" || (!name.endsWith(".md") && !name.endsWith(".mdx"))) return null;
@@ -331,23 +332,25 @@ function scanDir(
   slugOrder?: OrderingItem[],
 ): NavNode[] {
   if (!fs.existsSync(dir)) return [];
-  const entries = fs.readdirSync(dir).sort();
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
   if (slugOrder) {
     const nodes: NavNode[] = [];
     const slugMap = new Set(slugOrder.map((item) => item.slug));
-    const entryBySlug = new Map<string, string>();
-    for (const name of entries) {
-      const slug = navEntrySlug(name);
-      if (!entryBySlug.has(slug)) entryBySlug.set(slug, name);
+    const entryBySlug = new Map<string, fs.Dirent>();
+    for (const file of entries) {
+      const slug = navEntrySlug(file.name);
+      if (!entryBySlug.has(slug)) entryBySlug.set(slug, file);
     }
 
     for (const item of slugOrder) {
-      const name = entryBySlug.get(item.slug);
-      if (!name) continue;
+      const file = entryBySlug.get(item.slug);
+      if (!file) continue;
       const node = buildNavNode(
         dir,
-        name,
+        file,
         slugParts,
         entry,
         readFrontmatter,
@@ -357,9 +360,9 @@ function scanDir(
       if (node) nodes.push(node);
     }
 
-    for (const name of entries) {
-      if (slugMap.has(navEntrySlug(name))) continue;
-      const node = buildNavNode(dir, name, slugParts, entry, readFrontmatter, ordering);
+    for (const file of entries) {
+      if (slugMap.has(navEntrySlug(file.name))) continue;
+      const node = buildNavNode(dir, file, slugParts, entry, readFrontmatter, ordering);
       if (node) nodes.push(node);
     }
 
@@ -369,9 +372,9 @@ function scanDir(
   if (ordering === "numeric") {
     const nodes: { order: number; name: string; node: NavNode }[] = [];
 
-    for (const name of entries) {
-      const full = path.join(dir, name);
-      const stat = fs.statSync(full);
+    for (const file of entries) {
+      const full = path.join(dir, file.name);
+      const stat = file.isSymbolicLink() ? fs.statSync(full) : file;
       const metadataPath = stat.isDirectory() ? findIndex(full) : full;
       const data =
         metadataPath && (metadataPath.endsWith(".md") || metadataPath.endsWith(".mdx"))
@@ -380,7 +383,7 @@ function scanDir(
       const order = typeof data.order === "number" ? data.order : Infinity;
       const node = buildNavNode(
         dir,
-        name,
+        file,
         slugParts,
         entry,
         readFrontmatter,
@@ -388,7 +391,7 @@ function scanDir(
         undefined,
         stat,
       );
-      if (node) nodes.push({ order, name, node });
+      if (node) nodes.push({ order, name: file.name, node });
     }
 
     nodes.sort((a, b) => {
@@ -400,8 +403,8 @@ function scanDir(
   }
 
   const nodes: NavNode[] = [];
-  for (const name of entries) {
-    const node = buildNavNode(dir, name, slugParts, entry, readFrontmatter, ordering);
+  for (const file of entries) {
+    const node = buildNavNode(dir, file, slugParts, entry, readFrontmatter, ordering);
     if (node) nodes.push(node);
   }
   return nodes;
