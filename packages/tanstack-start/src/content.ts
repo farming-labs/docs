@@ -176,7 +176,7 @@ export function loadDocsNavTree(
   const children: NavNode[] = [];
 
   const indexPath = findIndex(absDir);
-  const rootData = indexPath ? matter(fs.readFileSync(indexPath, "utf-8")).data : undefined;
+  const rootData = indexPath ? matter(fs.readFileSync(indexPath)).data : undefined;
   // An agent-only root page has no human projection, so it has no sidebar entry.
   if (rootData && !resolveDocsPageAudience(rootData.audience)) {
     const data = rootData;
@@ -189,25 +189,38 @@ export function loadDocsNavTree(
   }
 
   const rootSlugOrder = Array.isArray(ordering) ? ordering : undefined;
-  children.push(...scanDir(absDir, [], entry, ordering, rootSlugOrder));
+  if (fs.existsSync(absDir)) {
+    children.push(...buildNavLevel(readNavFolders(absDir), [], entry, ordering, rootSlugOrder));
+  }
   return { name: "Docs", children };
 }
 
+interface NavFolder {
+  name: string;
+  dir: string;
+  indexPath: string;
+}
+
+function readNavFolders(dir: string): NavFolder[] {
+  const folders: NavFolder[] = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+    const full = path.join(dir, entry.name);
+    if (entry.isSymbolicLink() && !fs.statSync(full).isDirectory()) continue;
+    const indexPath = findIndex(full);
+    if (indexPath) folders.push({ name: entry.name, dir: full, indexPath });
+  }
+  return folders.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+}
+
 function buildNavNode(
-  dir: string,
-  name: string,
+  { name, dir }: NavFolder,
+  data: Record<string, unknown>,
   slugParts: string[],
   entry: string,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   childSlugOrder?: OrderingItem[],
 ): NavNode | null {
-  const full = path.join(dir, name);
-  if (!fs.statSync(full).isDirectory()) return null;
-
-  const indexPath = findIndex(full);
-  if (!indexPath) return null;
-
-  const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
   const slug = [...slugParts, name];
   const url = `/${entry}/${slug.join("/")}`;
   const displayName =
@@ -215,15 +228,11 @@ function buildNavNode(
     name.replace(/-/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const icon = data.icon as string | undefined;
 
-  const childDirs = fs.readdirSync(full).filter((childName) => {
-    const childPath = path.join(full, childName);
-    return fs.statSync(childPath).isDirectory() && findIndex(childPath) !== null;
-  });
+  const childDirs = readNavFolders(dir);
 
   // An agent-only page has no human projection: keep visible children under a plain folder.
   if (resolveDocsPageAudience(data.audience)) {
-    const children =
-      childDirs.length > 0 ? scanDir(full, slug, entry, ordering, childSlugOrder) : [];
+    const children = buildNavLevel(childDirs, slug, entry, ordering, childSlugOrder);
     return children.length > 0 ? { type: "folder", name: displayName, icon, children } : null;
   }
 
@@ -234,70 +243,50 @@ function buildNavNode(
       icon,
       index: { type: "page", name: displayName, url, icon },
       folderIndexBehavior: resolvePageSidebarFolderIndexBehavior(data.sidebar),
-      children: scanDir(full, slug, entry, ordering, childSlugOrder),
+      children: buildNavLevel(childDirs, slug, entry, ordering, childSlugOrder),
     };
   }
 
   return { type: "page", name: displayName, url, icon };
 }
 
-function scanDir(
-  dir: string,
+function buildNavLevel(
+  folders: NavFolder[],
   slugParts: string[],
   entry: string,
   ordering?: "alphabetical" | "numeric" | OrderingItem[],
   slugOrder?: OrderingItem[],
 ): NavNode[] {
-  if (!fs.existsSync(dir)) return [];
-  const entries = fs.readdirSync(dir).sort();
+  const nodes: NavNode[] = [];
+  const ranked: { order: number; node: NavNode }[] = [];
+  function append(folder: NavFolder, childOrder?: OrderingItem[]) {
+    const data = matter(fs.readFileSync(folder.indexPath)).data;
+    const node = buildNavNode(folder, data, slugParts, entry, ordering, childOrder);
+    if (!node) return;
+    if (ordering === "numeric") {
+      ranked.push({ order: typeof data.order === "number" ? data.order : Infinity, node });
+    } else {
+      nodes.push(node);
+    }
+  }
 
   if (slugOrder) {
-    const nodes: NavNode[] = [];
-    const slugMap = new Set(slugOrder.map((item) => item.slug));
-
+    const byName = new Map(folders.map((folder) => [folder.name, folder]));
+    const orderedNames = new Set<string>();
     for (const item of slugOrder) {
-      if (!entries.includes(item.slug)) continue;
-      const node = buildNavNode(dir, item.slug, slugParts, entry, ordering, item.children);
-      if (node) nodes.push(node);
+      const folder = byName.get(item.slug);
+      if (folder) append(folder, item.children);
+      orderedNames.add(item.slug);
     }
-
-    for (const name of entries) {
-      if (slugMap.has(name)) continue;
-      const node = buildNavNode(dir, name, slugParts, entry, ordering);
-      if (node) nodes.push(node);
+    for (const folder of folders) {
+      if (!orderedNames.has(folder.name)) append(folder);
     }
-
-    return nodes;
+  } else {
+    for (const folder of folders) append(folder);
   }
-
   if (ordering === "numeric") {
-    const nodes: { order: number; node: NavNode }[] = [];
-
-    for (const name of entries) {
-      const full = path.join(dir, name);
-      if (!fs.statSync(full).isDirectory()) continue;
-
-      const indexPath = findIndex(full);
-      if (!indexPath) continue;
-
-      const { data } = matter(fs.readFileSync(indexPath, "utf-8"));
-      const order = typeof data.order === "number" ? data.order : Infinity;
-      const node = buildNavNode(dir, name, slugParts, entry, ordering);
-      if (node) nodes.push({ order, node });
-    }
-
-    nodes.sort((a, b) => {
-      if (a.order === b.order) return 0;
-      return a.order - b.order;
-    });
-
-    return nodes.map((item) => item.node);
-  }
-
-  const nodes: NavNode[] = [];
-  for (const name of entries) {
-    const node = buildNavNode(dir, name, slugParts, entry, ordering);
-    if (node) nodes.push(node);
+    ranked.sort((a, b) => a.order - b.order);
+    return ranked.map(({ node }) => node);
   }
   return nodes;
 }
