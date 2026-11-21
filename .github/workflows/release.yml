@@ -166,16 +166,19 @@ jobs:
             echo "| Package | Version |"
             echo "| --- | --- |"
           } >> "$GITHUB_STEP_SUMMARY"
+          # npm confirms a publish before the registry lists the version. For v0.2.149 and
+          # v0.2.150 the registry recorded each version 75 to 248 seconds after npm confirmed
+          # it, so allow each package 10 minutes.
           for f in $(grep -oE 'packages/[^"]+/package\.json' bump.config.ts); do
             name=$(node -p "require('./$f').name")
             found=""
-            for i in 1 2 3 4 5 6; do
+            for i in $(seq 1 60); do
               found=$(npm view "$name@$VERSION" version --prefer-online 2>/dev/null || true)
               [ -n "$found" ] && break
               sleep 10
             done
             if [ -z "$found" ]; then
-              echo "::error::$name@$VERSION is not visible on npm"
+              echo "::error::$name@$VERSION is not visible on npm after 10 minutes. Rerun this job once it is: published versions are skipped."
               exit 1
             fi
             echo "| $name | $found |" >> "$GITHUB_STEP_SUMMARY"
