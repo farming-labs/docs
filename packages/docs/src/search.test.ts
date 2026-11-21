@@ -1897,6 +1897,47 @@ Run the cobalt provenance marker.
     expect(pageChunking.indexGeneration).not.toBe(baseline.indexGeneration);
   });
 
+  it("follows in-place page edits across repeated index generations", async () => {
+    const page: DocsSearchSourcePage = {
+      title: "Alpha provenance",
+      url: "/docs/alpha-provenance",
+      content: "Alpha provenance marker.",
+      framework: "nextjs",
+    };
+    const generation = async () =>
+      (await performDocsSearchWithMetadata({ pages: [page], query: "alpha" })).indexGeneration;
+    const freshGeneration = async () =>
+      (await performDocsSearchWithMetadata({ pages: [{ ...page }], query: "alpha" }))
+        .indexGeneration;
+    const matches = async (query: string) =>
+      (await performDocsSearchWithMetadata({ pages: [page], query })).results.length > 0;
+
+    const baseline = await generation();
+    expect(await generation()).toBe(baseline);
+
+    page.agent = { task: "Configure the contract-only retrieval marker." };
+    const withContract = await generation();
+    expect(withContract).not.toBe(baseline);
+    expect(withContract).toBe(await freshGeneration());
+    expect(await matches("retrieval")).toBe(true);
+
+    page.agent = { task: "Configure a different contract-only marker." };
+    const editedContract = await generation();
+    expect(editedContract).not.toBe(withContract);
+    expect(editedContract).toBe(await freshGeneration());
+    expect(await matches("different")).toBe(true);
+    expect(await matches("retrieval")).toBe(false);
+
+    delete page.agent;
+    page.framework = "nuxt";
+    const changedScope = await generation();
+    expect(changedScope).not.toBe(baseline);
+    expect(changedScope).toBe(await freshGeneration());
+
+    page.framework = "nextjs";
+    expect(await generation()).toBe(baseline);
+  });
+
   it("returns a structured generation for blank queries without invoking the provider", async () => {
     const providerSearch = vi.fn(async () => {
       throw new Error("Blank structured queries must not reach the provider.");
