@@ -956,6 +956,66 @@ describe("MCP contract prompts", () => {
     }
   });
 
+  it("rebuilds contract prompt arguments when a page's applicability changes", async () => {
+    let page: DocsMcpPage = contractPage;
+    const handlers = createDocsMcpHttpHandler({
+      source: { ...createPromptSource(), getPages: () => [page] },
+      mcp: { ...promptConfig, prompts: { contracts: ["/docs/installation"] } },
+    });
+    async function listArguments() {
+      const response = await callModernMcpMethod(handlers, "prompts/list");
+      expect(response.status).toBe(200);
+      const payload = await parseMcpPayload<{
+        result?: { prompts?: Array<{ arguments?: Array<{ name: string; required?: boolean }> }> };
+      }>(response);
+      return payload.result?.prompts?.[0]?.arguments;
+    }
+    async function getPromptStatus(args: Record<string, string>) {
+      const response = await callModernMcpMethod(handlers, "prompts/get", {
+        name: "contract-docs-installation",
+        arguments: args,
+      });
+      const payload = await parseMcpPayload<{ result?: unknown; error?: unknown }>(response);
+      return payload.error ? "error" : "ok";
+    }
+
+    try {
+      expect(await listArguments()).toEqual([
+        expect.objectContaining({ name: "framework", required: true }),
+        expect.objectContaining({ name: "version", required: false }),
+        expect.objectContaining({ name: "package", required: false }),
+        expect.objectContaining({ name: "request", required: false }),
+      ]);
+      expect(await getPromptStatus({ framework: "astro" })).toBe("ok");
+
+      page = {
+        ...contractPage,
+        agent: {
+          ...contractPage.agent,
+          appliesTo: { framework: "sveltekit", package: "@farming-labs/svelte" },
+        },
+      };
+      expect(await listArguments()).toEqual([
+        expect.objectContaining({ name: "framework", required: false }),
+        expect.objectContaining({ name: "package", required: false }),
+        expect.objectContaining({ name: "request", required: false }),
+      ]);
+      expect(await getPromptStatus({ framework: "astro" })).toBe("error");
+      expect(await getPromptStatus({ framework: "sveltekit" })).toBe("ok");
+
+      page = contractPage;
+      expect((await listArguments())?.map((argument) => argument.name)).toEqual([
+        "framework",
+        "version",
+        "package",
+        "request",
+      ]);
+      expect(await getPromptStatus({ framework: "astro" })).toBe("ok");
+    } finally {
+      await handlers.close?.();
+    }
+  });
+
   it("rejects stale contract and golden-task selectors during server creation", async () => {
     await expect(
       createDocsMcpServer({

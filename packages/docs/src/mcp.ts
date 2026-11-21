@@ -109,6 +109,7 @@ import {
   resolveDocsOpenApiMcpOperations,
 } from "./openapi-mcp.js";
 import { validateDocsOpenApiMcpUrl } from "./openapi-mcp-node.js";
+import { createPreparedContentCache } from "./prepared-content-cache.js";
 import type { DocsPublishedAgentSkill } from "./standards-discovery.js";
 import {
   isDocsMcpProtectedResourceMetadataPath,
@@ -4389,9 +4390,18 @@ function docsMcpPromptEnumArgument(values: string[], description: string, requir
   return required ? schema : schema.optional();
 }
 
+// The HTTP handler builds a server per request. Each schema depends only on these
+// values, so pages with the same applicability share one across requests.
+const docsMcpContractPromptArgsSchemas = createPreparedContentCache<z.ZodObject>(256);
+
 function buildDocsMcpContractPromptArgsSchema(contract: PageAgentFrontmatter) {
   const frameworks = docsMcpPromptScopeValues(contract.appliesTo?.framework);
   const packages = docsMcpPromptScopeValues(contract.appliesTo?.package);
+  const hasVersion = Boolean(contract.appliesTo?.version);
+  const key = JSON.stringify([frameworks, packages, hasVersion]);
+  const cached = docsMcpContractPromptArgsSchemas.get(key);
+  if (cached) return cached;
+
   const shape: Record<string, z.ZodType> = {};
 
   if (frameworks.length > 0) {
@@ -4401,7 +4411,7 @@ function buildDocsMcpContractPromptArgsSchema(contract: PageAgentFrontmatter) {
       frameworks.length > 1,
     );
   }
-  if (contract.appliesTo?.version) {
+  if (hasVersion) {
     shape.version = z
       .string()
       .trim()
@@ -4424,7 +4434,10 @@ function buildDocsMcpContractPromptArgsSchema(contract: PageAgentFrontmatter) {
     .max(4_000)
     .describe("Optional project-specific details or requested variation.")
     .optional();
-  return z.object(shape).strict();
+  const schema = z.object(shape).strict();
+  // The descriptions repeat each listed value once.
+  docsMcpContractPromptArgsSchemas.set(key, schema, key.length);
+  return schema;
 }
 
 const docsMcpGoldenPromptArgsSchema = z
