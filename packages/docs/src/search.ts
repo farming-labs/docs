@@ -1195,13 +1195,26 @@ function getPageAudienceSearchText(
   return stripMarkdownText(getPageAudienceRawContent(page, audience));
 }
 
+// Search warnings strip every page's markdown on each query. The text depends only
+// on these inputs, so an edited source or contract misses.
+const pageAudienceIndexContents = createPreparedContentCache<string>(4_096, 16_000_000);
+
 function getPageAudienceIndexContent(
   page: DocsSearchSourcePage,
   audience: DocsContentAudience,
 ): string {
-  return normalizeWhitespace(
+  const key = JSON.stringify([
+    audience,
+    getPageAudienceSource(page, audience),
+    renderPageAgentContractMarkdown(page.agent),
+  ]);
+  const cached = pageAudienceIndexContents.get(key);
+  if (cached !== undefined) return cached;
+  const content = normalizeWhitespace(
     [getPageAudienceSearchText(page, audience), getPageAgentContractSearchText(page)].join(" "),
   );
+  pageAudienceIndexContents.set(key, content, content.length);
+  return content;
 }
 
 function sortRetrievalSourceValues(values: readonly string[]): string[] | undefined {
