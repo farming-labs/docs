@@ -5,6 +5,7 @@ import type {
   DocsSearchAdapterPage,
   DocsSearchResponse,
   DocsSearchResult,
+  DocsSearchSourcePage,
 } from "./types.js";
 import {
   buildDocsAskAIContext,
@@ -2106,6 +2107,43 @@ Run the cobalt provenance marker.
         }),
       ]),
     );
+  });
+
+  it("reports scope warnings from each page's current text, contract, and audience", async () => {
+    const page: DocsSearchSourcePage = {
+      title: "Missing scope",
+      url: "/docs/missing",
+      content: "Configure scope.",
+    };
+    async function missingScopePages(audience?: "human" | "agent") {
+      const structured = await performDocsSearchWithMetadata({
+        pages: [page],
+        query: "turquoise",
+        filters: { framework: "nuxt" },
+        ...(audience ? { audience } : {}),
+      });
+      return structured.warnings?.find((warning) => warning.code === "missing_scope_metadata")
+        ?.pageUrls;
+    }
+
+    expect(await missingScopePages()).toBeUndefined();
+
+    page.content = "Rotate the turquoise migration token.";
+    expect(await missingScopePages()).toEqual(["/docs/missing"]);
+
+    page.content = "Configure scope.";
+    expect(await missingScopePages()).toBeUndefined();
+
+    page.agent = { task: "Rotate the turquoise migration token." };
+    expect(await missingScopePages()).toEqual(["/docs/missing"]);
+
+    page.agent = { task: "Configure scope." };
+    expect(await missingScopePages()).toBeUndefined();
+
+    page.content = "Configure scope.\n\n<Agent>Rotate the turquoise migration token.</Agent>";
+    expect(await missingScopePages("human")).toBeUndefined();
+    expect(await missingScopePages("agent")).toEqual(["/docs/missing"]);
+    expect(await missingScopePages("human")).toBeUndefined();
   });
 
   it("auto-forwards MCP audience only to the same-origin default search tool", () => {
