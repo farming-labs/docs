@@ -26,7 +26,7 @@ const exportsFor = (value: string) =>
 function loadWithCore(
   exports: Record<string, string>,
   files: Record<string, string>,
-  requireModule = false,
+  mode: "import" | "require" | "concurrent import" = "import",
 ) {
   const dir = mkdtempSync(join(tmpdir(), "farm-docs-mdx-entry-"));
   temporaryDirs.push(dir);
@@ -36,17 +36,19 @@ function loadWithCore(
   for (const [name, source] of Object.entries(files)) writeFileSync(join(core, name), source);
   const path = join(dir, "loader.mjs");
   writeFileSync(path, loader);
+  // Stands in for the docs theme, which imports the compiler entry while Farm loads the config.
+  const theme = join(dir, "theme.mjs");
+  writeFileSync(theme, 'export * from "@farming-labs/docs/mdx";');
+  const scripts = {
+    import: `const helpers = await import(${JSON.stringify(pathToFileURL(path).href)});`,
+    require: `import {createRequire} from 'node:module'; const helpers = createRequire(import.meta.url)(${JSON.stringify(path)});`,
+    "concurrent import": `const [, helpers] = await Promise.all([import(${JSON.stringify(pathToFileURL(theme).href)}), import(${JSON.stringify(pathToFileURL(path).href)})]);`,
+  };
   return () =>
     JSON.parse(
       execFileSync(
         process.execPath,
-        [
-          "--input-type=module",
-          "-e",
-          requireModule
-            ? `import {createRequire} from 'node:module'; const helpers = createRequire(import.meta.url)(${JSON.stringify(path)}); console.log(JSON.stringify(helpers));`
-            : `const helpers = await import(${JSON.stringify(pathToFileURL(path).href)}); console.log(JSON.stringify(helpers));`,
-        ],
+        ["--input-type=module", "-e", `${scripts[mode]} console.log(JSON.stringify(helpers));`],
         { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
       ),
     );
@@ -57,7 +59,7 @@ afterEach(() => {
 });
 
 describe("MDX compiler core entry", () => {
-  it.each([false, true])("loads only compiler helpers (require: %s)", (requireModule) => {
+  it.each(["import", "require"] as const)("loads only compiler helpers (%s)", (mode) => {
     const load = loadWithCore(
       { ".": "./root.mjs", "./server": "./server.mjs", "./mdx": "./mdx.mjs" },
       {
@@ -65,38 +67,52 @@ describe("MDX compiler core entry", () => {
         "server.mjs": 'throw new Error("server barrel evaluated");',
         "mdx.mjs": exportsFor("compiler"),
       },
-      requireModule,
+      mode,
     );
     expect(load()).toEqual(Object.fromEntries(names.map((name) => [name, "compiler"])));
   });
 
-  it.each([false, true])(
-    "keeps older cores without the compiler export working (require: %s)",
-    (requireModule) => {
-      const load = loadWithCore(
-        { ".": "./root.mjs", "./server": "./server.mjs" },
-        {
-          "root.mjs": exportsFor("legacy"),
-          "server.mjs": 'export const remarkCodeGroup = "legacy code group";',
-        },
-        requireModule,
-      );
-      expect(load()).toEqual({
-        ...Object.fromEntries(names.map((name) => [name, "legacy"])),
-        remarkCodeGroup: "legacy code group",
-      });
-    },
-  );
+  it("loads while another module is still importing the compiler entry", () => {
+    // Node 22.13 crashed here when the adapter required the entry that the other import was
+    // loading. The race does not fail every run, so try it a few times.
+    const load = loadWithCore(
+      { ".": "./root.mjs", "./server": "./server.mjs", "./mdx": "./mdx.mjs" },
+      {
+        "root.mjs": 'throw new Error("root barrel evaluated");',
+        "server.mjs": 'throw new Error("server barrel evaluated");',
+        "mdx.mjs": exportsFor("compiler"),
+      },
+      "concurrent import",
+    );
+    for (let attempt = 0; attempt < 5; attempt++) {
+      expect(load()).toEqual(Object.fromEntries(names.map((name) => [name, "compiler"])));
+    }
+  });
+
+  it("fails clearly with a core older than the supported range", () => {
+    const load = loadWithCore(
+      { ".": "./root.mjs", "./server": "./server.mjs" },
+      {
+        "root.mjs": exportsFor("legacy"),
+        "server.mjs": 'export const remarkCodeGroup = "legacy code group";',
+      },
+    );
+    expect(load).toThrow("ERR_PACKAGE_PATH_NOT_EXPORTED");
+  });
 
   it.each([
     ["missing compiler file", undefined, "MODULE_NOT_FOUND"],
-    ["compiler evaluation failure", 'throw new Error("compiler failed");', "compiler failed"],
+    [
+      "compiler evaluation failure",
+      `${exportsFor("compiler")}\nthrow new Error("compiler failed");`,
+      "compiler failed",
+    ],
     [
       "missing compiler dependency",
       'import "missing-compiler-dependency";',
       "ERR_MODULE_NOT_FOUND",
     ],
-  ])("does not hide a %s with a legacy fallback", (_label, source, message) => {
+  ])("reports a %s instead of loading the core barrels", (_label, source, message) => {
     const load = loadWithCore(
       { ".": "./root.mjs", "./server": "./server.mjs", "./mdx": "./mdx.mjs" },
       {
