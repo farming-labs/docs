@@ -754,12 +754,21 @@ function getAskAIPageContent(page: DocsSearchSourcePage): string {
   return cleanGeneratedAgentContractMarkers(getAskAIPageSectionContent(page));
 }
 
+// Index generation strips every page's contract on each search. Keyed by the
+// rendered contract, so an edited contract misses.
+const agentContractSearchTexts = createPreparedContentCache<string>(4_096, 4_000_000);
+
 function getPageAgentContractSearchText(page: DocsSearchSourcePage): string {
-  return stripMarkdownText(
-    renderPageAgentContractMarkdown(page.agent)
+  const markdown = renderPageAgentContractMarkdown(page.agent);
+  const cached = agentContractSearchTexts.get(markdown);
+  if (cached !== undefined) return cached;
+  const text = stripMarkdownText(
+    markdown
       .replace(PAGE_AGENT_CONTRACT_START_MARKER, "")
       .replace(PAGE_AGENT_CONTRACT_END_MARKER, ""),
   );
+  agentContractSearchTexts.set(markdown, text, text.length);
+  return text;
 }
 
 function removeMdxModuleLinesOutsideFences(content: string): string {
@@ -1278,7 +1287,7 @@ function buildDocsRetrievalScopeIdentity(
         ),
     ]),
   );
-  return hashDocsRetrievalValue(
+  return hashDocsRetrievalIdentity(
     JSON.stringify({
       audience,
       locale: (page.locale ?? localeFallback)?.trim(),
@@ -1363,6 +1372,18 @@ function resolveDocsRetrievalCanonicalUrl(
 
 function hashDocsRetrievalValue(value: string): string {
   return digestDocsRetrievalContent(value);
+}
+
+// Every search hashes each page's scope identity and the whole source inventory
+// again. Keyed by the hashed text itself, so any change misses.
+const retrievalIdentityDigests = createPreparedContentCache<string>(16_384, 16_000_000);
+
+function hashDocsRetrievalIdentity(value: string): string {
+  const cached = retrievalIdentityDigests.get(value);
+  if (cached !== undefined) return cached;
+  const digest = hashDocsRetrievalValue(value);
+  retrievalIdentityDigests.set(value, digest, digest.length);
+  return digest;
 }
 
 type DocsRetrievalDigestCache = Map<DocsSearchSourcePage, string>;
@@ -1493,7 +1514,7 @@ async function buildDocsSearchIndexGeneration(
       : compareSearchMetadataValues(JSON.stringify(left), JSON.stringify(right));
   });
 
-  return hashDocsRetrievalValue(
+  return hashDocsRetrievalIdentity(
     JSON.stringify({
       format: RETRIEVAL_INDEX_FORMAT,
       audience: options.audience,
