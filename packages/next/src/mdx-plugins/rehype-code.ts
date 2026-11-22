@@ -127,22 +127,29 @@ function findPackage(require: NodeJS.Require, name: string) {
   }
 }
 
-// Highlighted output depends on Fumadocs' transformers and Shiki's grammars, themes and engines.
 function resolveHighlighter() {
   const fumadocs = findPackage(createRequire(import.meta.url), "fumadocs-core");
-  const shiki = findPackage(fumadocs.require, "shiki");
-  const shikijs = Object.keys(shiki.json.dependencies ?? {})
-    .filter((name) => name.startsWith("@shikijs/"))
-    .sort()
-    .map((name) => [name, findPackage(shiki.require, name).json.version]);
   return {
-    versions: { fumadocs: fumadocs.json.version, shiki: shiki.json.version, shikijs },
+    fumadocs,
     shiki: pathToFileURL(fumadocs.require.resolve("shiki")).href,
     shikiCore: pathToFileURL(fumadocs.require.resolve("shiki/core")).href,
     shikiWasm: pathToFileURL(fumadocs.require.resolve("shiki/wasm")).href,
   };
 }
 type ResolvedHighlighter = ReturnType<typeof resolveHighlighter>;
+
+// Highlighted output depends on Fumadocs' transformers and Shiki's grammars, themes and engines.
+// Only the cache key needs these versions. Reading them resolves every `@shikijs/*` package, and a
+// traced server function (Vercel, Next's standalone output) ships only the files its code imports,
+// so a highlighter without a cache never looks them up.
+function resolveVersions({ fumadocs }: ResolvedHighlighter) {
+  const shiki = findPackage(fumadocs.require, "shiki");
+  const shikijs = Object.keys(shiki.json.dependencies ?? {})
+    .filter((name) => name.startsWith("@shikijs/"))
+    .sort()
+    .map((name) => [name, findPackage(shiki.require, name).json.version]);
+  return { fumadocs: fumadocs.json.version, shiki: shiki.json.version, shikijs };
+}
 
 /** The highlighter a language's blocks need instead of the shared one, and what it loads. */
 interface SeparateHighlighter {
@@ -395,7 +402,8 @@ export default function rehypeDocsCode(
     isPlainJson(resolved);
   let store: ReturnType<typeof createCodeStore> | undefined;
   if (cacheable) {
-    const scope = digest(JSON.stringify([CACHE_FORMAT, highlighter.versions, resolved]));
+    const versions = resolveVersions(highlighter);
+    const scope = digest(JSON.stringify([CACHE_FORMAT, versions, resolved]));
     removeStaleScopes(cacheDir, scope.slice(0, 16));
     store = createCodeStore(join(cacheDir, scope.slice(0, 16)));
   }
