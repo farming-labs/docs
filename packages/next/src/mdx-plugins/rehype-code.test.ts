@@ -1,17 +1,26 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  cpSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   rmSync,
+  statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { compile } from "@mdx-js/mdx";
 import { defaultShikiFactory, wasmShikiFactory } from "fumadocs-core/highlight/shiki/full";
+import { build } from "tsdown";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import rehypeCode from "./rehype-code.js";
 
@@ -157,4 +166,75 @@ describe("code highlight cache", () => {
     expect(both).not.toBe(light);
     expect(entries()).toHaveLength(2);
   });
+});
+
+// Copies one traced path. pnpm links packages with symlinks, so links are recreated inside the copy
+// rather than followed, or the copy would reach files the trace left out.
+function copyTraced(root: string, out: string, file: string) {
+  const source = join(root, file);
+  const copy = join(out, file);
+  mkdirSync(dirname(copy), { recursive: true });
+  const stat = lstatSync(source);
+  if (stat.isSymbolicLink()) {
+    const target = readlinkSync(source);
+    const linked = isAbsolute(target)
+      ? join(out, relative(root, target))
+      : resolve(dirname(copy), target);
+    symlinkSync(linked, copy, statSync(source).isDirectory() ? "junction" : "file");
+  } else if (stat.isFile()) {
+    cpSync(source, copy);
+  }
+}
+
+describe("traced server output", () => {
+  const packageDir = fileURLToPath(new URL("../..", import.meta.url));
+  const root = resolve(packageDir, "../..");
+  let buildDir: string;
+  let outDir: string;
+
+  beforeEach(() => {
+    // Inside the package, so the built plugin resolves the package's own dependencies.
+    mkdirSync(join(packageDir, "node_modules", ".cache"), { recursive: true });
+    buildDir = mkdtempSync(join(packageDir, "node_modules", ".cache", "rehype-code-trace-"));
+    outDir = mkdtempSync(join(tmpdir(), "docs-code-trace-"));
+  });
+  afterEach(() => {
+    rmSync(buildDir, { recursive: true, force: true });
+    rmSync(outDir, { recursive: true, force: true });
+  });
+
+  // Vercel functions and Next's standalone output ship only the files Next's tracer finds by
+  // following imports, not all of `node_modules`. Request-time highlighting has no cache.
+  it("highlights without a cache using only the files a traced function ships", async () => {
+    await build({
+      config: false,
+      cwd: packageDir,
+      entry: { "rehype-code": "src/mdx-plugins/rehype-code.ts" },
+      outDir: buildDir,
+      format: "esm",
+      dts: false,
+      logLevel: "silent",
+    });
+    const entry = join(buildDir, "entry.mjs");
+    writeFileSync(
+      entry,
+      `import { compile } from "@mdx-js/mdx";
+import rehypeCode from "./rehype-code.mjs";
+const source = "\`\`\`ts\\nconst a = 1;\\n\`\`\`\\n\\n\`\`\`mdx\\n# Title\\n\`\`\`";
+const themes = { light: "github-light", dark: "github-dark" };
+const output = String(await compile(source, { rehypePlugins: [[rehypeCode, { themes }]] }));
+console.log(output.includes("--shiki-dark") ? "highlighted" : "plain");
+`,
+    );
+    const { nodeFileTrace } = createRequire(import.meta.url)("next/dist/compiled/@vercel/nft");
+    const { fileList } = (await nodeFileTrace([entry], { base: root })) as {
+      fileList: Set<string>;
+    };
+    for (const file of fileList) copyTraced(root, outDir, file);
+
+    const stdout = execFileSync(process.execPath, [join(outDir, relative(root, entry))], {
+      encoding: "utf8",
+    });
+    expect(stdout.trim()).toBe("highlighted");
+  }, 60_000);
 });
