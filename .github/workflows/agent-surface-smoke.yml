@@ -144,7 +144,7 @@ jobs:
 
   smoke:
     # Preview deployments are not smoke-tested: docs-website previews are behind
-    # Vercel SSO and docs-cloud previews are skipped (website/vercel.json).
+    # Vercel SSO and docs-cloud builds are skipped (website/vercel.json).
     # Scheduled and manual runs verify the production origin.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
