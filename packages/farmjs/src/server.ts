@@ -3,8 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import matter from "gray-matter";
-import { createElement, type ComponentType, type ReactElement } from "react";
-import * as ReactDOMServer from "react-dom/server";
+import type { ComponentType, ReactElement } from "react";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
@@ -172,8 +171,13 @@ function loadFarmDocsBrowserCss(): string {
 // twice. Write completed content in place instead.
 const FARM_DOCS_RENDER_OPTIONS = { progressiveChunkSize: Number.POSITIVE_INFINITY };
 
-async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
-  const server = ReactDOMServer as typeof ReactDOMServer & {
+type ReactDOMServerModule = typeof import("react-dom/server");
+
+async function renderFarmDocsMarkup(
+  ReactDOMServer: ReactDOMServerModule,
+  element: ReactElement,
+): Promise<string> {
+  const server = ReactDOMServer as ReactDOMServerModule & {
     renderToReadableStream?: (
       children: ReactElement,
       options?: { onError?: (error: unknown) => void; progressiveChunkSize?: number },
@@ -338,10 +342,64 @@ interface FarmDocsRuntimeFonts {
   code?: FarmDocsRuntimeFont;
 }
 
-interface FarmDocsReactModule {
-  FarmDocsPage: ComponentType<{ config: DocsConfig; data: DocsServerLoadResult }>;
-  /** Loads the page's compiled Markdown, which FarmDocsPage renders synchronously. */
+/** What a docs UI renders a page from. */
+export interface FarmDocsPageProps {
+  config: DocsConfig;
+  data: DocsServerLoadResult;
+}
+
+/** What Farm passes a docs UI's `hydrateFarmDocs()` in the browser. */
+export interface FarmDocsHydrateInput extends FarmDocsPageProps {
+  /** The docs config module, when the server flagged values its JSON copy dropped. */
+  configModule?: unknown;
+}
+
+/**
+ * A docs UI: the module that renders docs pages, on the server and in the browser. This package
+ * ships a React one. An app with another renderer names its own with `withDocs({ ui })`; the
+ * docs engine (content, navigation, search, Markdown, llms.txt, MCP) stays this package's.
+ */
+export interface FarmDocsUIModule {
+  /**
+   * The HTML of a docs page's body. The server writes it into the page's `#farm-docs-root`
+   * element, inside the document it renders around it.
+   */
+  renderFarmDocsPage(props: FarmDocsPageProps): string | Promise<string>;
+  /**
+   * Attaches to the server's HTML in the browser. Farm calls it on a page the docs server
+   * rendered. `createFarmDocsNavigator()` from `@farming-labs/farmjs/navigation` moves between
+   * docs pages without reloading.
+   */
+  hydrateFarmDocs(input: FarmDocsHydrateInput): unknown;
+  /** Loads what a page renders before it renders: on the server, and before hydrating. */
   loadFarmDocsPageModule?(data: DocsServerLoadResult): Promise<void>;
+}
+
+/** The server's view of a UI module. React's renders through `FarmDocsPage`. */
+type FarmDocsServerUIModule = Partial<FarmDocsUIModule> & {
+  FarmDocsPage?: ComponentType<FarmDocsPageProps>;
+};
+
+let reactServerModules: Promise<[typeof import("react"), ReactDOMServerModule]> | undefined;
+
+/**
+ * The page body's HTML, from the UI's own renderer, or from React for a UI that exports a
+ * `FarmDocsPage` component. React loads only then, so a UI with another renderer needs none.
+ */
+async function renderFarmDocsUI(
+  ui: FarmDocsServerUIModule,
+  props: FarmDocsPageProps,
+): Promise<string> {
+  if (typeof ui.renderFarmDocsPage === "function") return ui.renderFarmDocsPage(props);
+  if (typeof ui.FarmDocsPage === "function") {
+    reactServerModules ??= Promise.all([import("react"), import("react-dom/server")]);
+    const [React, ReactDOMServer] = await reactServerModules;
+    return renderFarmDocsMarkup(ReactDOMServer, React.createElement(ui.FarmDocsPage, props));
+  }
+  throw new Error(
+    "The docs UI module exports neither renderFarmDocsPage() nor a FarmDocsPage component. " +
+      "Export renderFarmDocsPage() from the module withDocs({ ui }) names.",
+  );
 }
 
 export interface FarmDocsRuntimeHandlerOptions {
@@ -355,8 +413,16 @@ export interface FarmDocsRuntimeHandlerOptions {
   resolveLayoutFonts?: (
     pathname: string,
   ) => FarmDocsRuntimeFonts | undefined | Promise<FarmDocsRuntimeFonts | undefined>;
-  /** Development hook used by Farm to load the React entry through Vite SSR. */
-  loadReactModule?: () => Promise<FarmDocsReactModule>;
+  /**
+   * Loads the docs UI through the host's module pipeline, as the browser loads it. Farm passes
+   * it from releases that run a UI written for any renderer.
+   */
+  loadUIModule?: () => Promise<FarmDocsServerUIModule>;
+  /**
+   * @deprecated Farm releases before `loadUIModule` pass the React UI with it. Read only when
+   * `loadUIModule` is absent.
+   */
+  loadReactModule?: () => Promise<FarmDocsServerUIModule>;
   /**
    * The content cannot change while this handler runs, as in a production
    * build. Navigation and the last-modified manifest are then read once
@@ -3141,16 +3207,12 @@ function createFarmDocsSingleRuntimeHandler(
       }
       throw error;
     }
-    const reactModule = options.loadReactModule
-      ? await options.loadReactModule()
-      : ((await import("./react.js")) as FarmDocsReactModule);
-    await reactModule.loadFarmDocsPageModule?.(data);
-    const markup = await renderFarmDocsMarkup(
-      createElement(reactModule.FarmDocsPage, {
-        config: runtimeConfig,
-        data,
-      }),
-    );
+    const loadUIModule = options.loadUIModule ?? options.loadReactModule;
+    const ui = loadUIModule
+      ? await loadUIModule()
+      : ((await import("./react.js")) as FarmDocsServerUIModule);
+    await ui.loadFarmDocsPageModule?.(data);
+    const markup = await renderFarmDocsUI(ui, { config: runtimeConfig, data });
     const fonts = await options.resolveLayoutFonts?.(pathname);
     const html = renderFarmDocsDocument({
       config: runtimeConfig,

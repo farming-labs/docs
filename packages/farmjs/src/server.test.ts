@@ -745,6 +745,39 @@ describe("createFarmDocsRuntimeHandler", () => {
     ).not.toThrow();
   });
 
+  it("renders pages with a docs UI written for another renderer", async () => {
+    const prepared: string[] = [];
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadUIModule: async () => ({
+        async loadFarmDocsPageModule(data) {
+          prepared.push(data.url);
+        },
+        renderFarmDocsPage: ({ data }) => `<main class="leaf-docs">${data.title}</main>`,
+        hydrateFarmDocs: () => undefined,
+      }),
+      // A host passes both loaders only when the UI is React's; loadUIModule wins.
+      loadReactModule: async () => {
+        throw new Error("The React loader must not run when the host passes loadUIModule.");
+      },
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response!.text();
+    expect(response!.status).toBe(200);
+    expect(html).toMatch(/<div id="farm-docs-root"[^>]*><main class="leaf-docs">[^<]+<\/main>/);
+    expect(prepared).toEqual(["/docs"]);
+  });
+
+  it("says what a docs UI module must export when it renders nothing", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadUIModule: async () => ({ hydrateFarmDocs: () => undefined }),
+    });
+
+    await expect(handler(new Request("https://farm.example/docs"))).rejects.toThrow(
+      "The docs UI module exports neither renderFarmDocsPage() nor a FarmDocsPage component.",
+    );
+  });
+
   it("builds a rendered page's response with the host's createHtmlResponse", async () => {
     const built: { html: string; init: ResponseInit }[] = [];
     const handler = createFarmDocsRuntimeHandler(config, {

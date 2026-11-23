@@ -21,14 +21,23 @@ export const FARM_DOCS_ADAPTER_CAPABILITIES = Object.freeze(["guarded-pages"] as
 /** Internal request marker used by the client runtime for page-data navigation. */
 export const FARM_DOCS_NAVIGATION_HEADER = "x-farm-docs-navigation" as const;
 
+/** The React docs UI this package ships. */
+export const FARM_DOCS_REACT_UI = "@farming-labs/farmjs/react" as const;
+
 export interface FarmDocsRuntimeAdapter {
   id: typeof FARM_DOCS_ADAPTER_ID;
   protocol: typeof FARM_DOCS_ADAPTER_PROTOCOL;
   capabilities: typeof FARM_DOCS_ADAPTER_CAPABILITIES;
   server: "@farming-labs/farmjs/server";
-  react: "@farming-labs/farmjs/react";
+  /** The docs UI module: React's, or the one `withDocs({ ui })` names. */
+  ui: string;
+  /** The Farm renderer the UI is written for. Farm runs the adapter only under it. */
+  renderer: string;
+  /** The React UI again, for Farm releases that read only this field. Absent with another UI. */
+  react?: typeof FARM_DOCS_REACT_UI;
   vite: "@farming-labs/farmjs/vite";
-  edgeCompiler: "@farming-labs/farmjs/edge-compiler";
+  /** Absent with another UI: the edge snapshot renders the React UI. */
+  edgeCompiler?: "@farming-labs/farmjs/edge-compiler";
 }
 
 /** Serializable runtime descriptor placed in Farm's resolved docs config. */
@@ -37,7 +46,9 @@ export const farmDocsRuntimeAdapter: FarmDocsRuntimeAdapter = Object.freeze({
   protocol: FARM_DOCS_ADAPTER_PROTOCOL,
   capabilities: FARM_DOCS_ADAPTER_CAPABILITIES,
   server: "@farming-labs/farmjs/server",
-  react: "@farming-labs/farmjs/react",
+  ui: FARM_DOCS_REACT_UI,
+  renderer: "react",
+  react: FARM_DOCS_REACT_UI,
   vite: "@farming-labs/farmjs/vite",
   edgeCompiler: "@farming-labs/farmjs/edge-compiler",
 });

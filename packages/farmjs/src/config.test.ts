@@ -61,6 +61,41 @@ describe("withDocs", () => {
     });
   });
 
+  it("names the React UI for Farm releases that read either field", () => {
+    expect(withDocs({}).docs.adapter).toMatchObject({
+      ui: "@farming-labs/farmjs/react",
+      renderer: "react",
+      react: "@farming-labs/farmjs/react",
+    });
+  });
+
+  it("describes a docs UI written for another renderer", () => {
+    const adapter = withDocs({}, { ui: { module: "@acme/leaf-docs", renderer: "leaf" } }).docs
+      .adapter!;
+
+    expect(adapter).toMatchObject({
+      id: "@farming-labs/farmjs",
+      protocol: 1,
+      server: "@farming-labs/farmjs/server",
+      ui: "@acme/leaf-docs",
+      renderer: "leaf",
+    });
+    // Older Farm releases read `react` as the React UI, and the edge snapshot renders React.
+    expect(adapter).not.toHaveProperty("react");
+    expect(adapter).not.toHaveProperty("edgeCompiler");
+  });
+
+  it("reports every problem with a docs UI at once", () => {
+    expect(() =>
+      withDocs({}, { ui: { module: "./docs-ui.ts", renderer: "" }, shell: "src/shell.tsx" }),
+    ).toThrow(
+      /^withDocs\(\): `ui.module` "\.\/docs-ui\.ts" is relative.*`ui.renderer` must name.*`shell` wraps/,
+    );
+    expect(() => withDocs({}, { ui: { module: "", renderer: "svelte" } })).toThrow(
+      "`ui.module` must name the docs UI module",
+    );
+  });
+
   it("supports explicitly disabling the adapter", () => {
     expect(withDocs({}, { enabled: false }).docs).toMatchObject({
       enabled: false,

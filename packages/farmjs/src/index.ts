@@ -4,6 +4,7 @@ export {
   type FarmConfigWithDocs,
   type FarmDocsAdapterOptions,
   type FarmDocsCoreConfig,
+  type FarmDocsUIOptions,
 } from "./config.js";
 export {
   loadDocsContent,
@@ -21,7 +22,10 @@ export {
   createFarmDocsMultiRuntimeHandler,
   type DocsServer,
   type DocsServerLoadResult,
+  type FarmDocsHydrateInput,
+  type FarmDocsPageProps,
   type FarmDocsRuntimeHandlerOptions,
+  type FarmDocsUIModule,
 } from "./server.js";
 export { FarmDocsPage, hydrateFarmDocs } from "./react.js";
 export {
@@ -33,6 +37,7 @@ export {
 export {
   FARM_DOCS_ADAPTER_ID,
   FARM_DOCS_ADAPTER_PROTOCOL,
+  FARM_DOCS_REACT_UI,
   farmDocsRuntimeAdapter,
   type FarmDocsRuntimeAdapter,
 } from "./runtime.js";

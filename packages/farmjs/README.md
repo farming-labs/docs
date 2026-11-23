@@ -167,6 +167,61 @@ An edge build also stops with an actionable error when Ask AI, feedback,
 analytics, observability, i18n, or a function-backed custom search provider is
 enabled. Use a Node target when those runtime features are required.
 
+## Custom renderers
+
+The adapter is a docs engine plus a UI. The engine is renderer-neutral: content,
+navigation, search, Markdown, `llms.txt`, MCP, and the HTML document around each
+page. The UI renders a page's body and hydrates it. This package ships a React
+UI, and an app with another Farm renderer names its own with `ui`:
+
+```ts
+import { defineConfig } from "@farm.js/core";
+import { withDocs } from "@farming-labs/farmjs/config";
+import { leaf } from "farm-leaf";
+
+export default withDocs(defineConfig({ renderer: leaf() }), {
+  ui: { module: "@acme/leaf-docs", renderer: "leaf" },
+});
+```
+
+The UI module exports two functions, typed by `FarmDocsUIModule`:
+
+```ts
+import type { FarmDocsUIModule } from "@farming-labs/farmjs";
+import { createElement } from "leaf";
+import { hydrateRoot } from "leaf/dom";
+import { renderToString } from "leaf/server";
+import { DocsPage } from "./docs-page";
+
+// On the server: the page body's HTML, which the engine puts in #farm-docs-root.
+export const renderFarmDocsPage: FarmDocsUIModule["renderFarmDocsPage"] = ({ config, data }) =>
+  renderToString(createElement(DocsPage, { config, data }));
+
+// In the browser: Farm calls it on a page the docs server rendered.
+export const hydrateFarmDocs: FarmDocsUIModule["hydrateFarmDocs"] = ({ config, data }) =>
+  hydrateRoot(document.getElementById("farm-docs-root")!, createElement(DocsPage, { config, data }));
+```
+
+`data` is the page the engine loaded: its navigation `tree`, `title`,
+`description`, `rawContent` (the page's Markdown), and the previous and next
+pages. `createFarmDocsNavigator()` from `@farming-labs/farmjs/navigation` moves
+between docs pages without a reload: it fetches the next page's `data` from the
+engine and hands it to your UI.
+
+Limits:
+
+- It needs a Farm release that reads `ui` from the descriptor, the first after
+  0.1.81. Farm stops when `ui.renderer` is not the app's renderer.
+- `ui.module` is a package name or an absolute path, since Farm imports it from
+  entries it generates.
+- The MDX components this package compiles are React's. A UI with another
+  renderer renders `rawContent` itself.
+- `shell` and edge targets render the React UI. `withDocs()` refuses `shell`
+  with another UI, and Farm stops an edge build.
+- `react`, `react-dom`, and `@farming-labs/theme` stay peer dependencies, so a
+  package manager warns when they are missing. The server loads React only to
+  render the React UI.
+
 ## Server wrapper
 
 `withDocs()` is the normal integration. The lower-level server wrapper is
@@ -195,6 +250,7 @@ pipeline without taking over application routes. The server also exposes
 | `@farming-labs/farmjs/config` | Farm config wrapper |
 | `@farming-labs/farmjs/server` | Page loader and API, agent, and MCP request handlers |
 | `@farming-labs/farmjs/react` | React documentation page renderer |
+| `@farming-labs/farmjs/navigation` | Client navigation between docs pages, for any UI |
 | `@farming-labs/farmjs/content` | Content and navigation utilities |
 | `@farming-labs/farmjs/vite` | MDX compilation plugin |
 | `@farming-labs/farmjs/runtime` | Versioned Farm runtime contract |
