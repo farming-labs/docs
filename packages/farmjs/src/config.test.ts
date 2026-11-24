@@ -111,7 +111,7 @@ describe("withDocs", () => {
     );
   });
 
-    it("reports every problem with a docs UI at once", () => {
+  it("reports every problem with a docs UI at once", () => {
     expect(() =>
       withDocs({}, { ui: { module: "./docs-ui.ts", renderer: "" }, shell: "src/shell.tsx" }),
     ).toThrow(
