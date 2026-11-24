@@ -244,8 +244,9 @@ Limits:
 - It needs a Farm release that reads `ui` from the descriptor and passes
   `renderer` to it, the first after 0.1.81. Farm stops when `ui.renderer` is not
   the app's renderer.
-- The universal UI has no search box, table of contents, or client navigation
-  between docs pages, and theme components such as tabs render as static HTML.
+- The universal UI has no search box or client navigation between docs pages.
+  Its table of contents shows on wide screens, with no popover on narrow ones,
+  and theme components such as tabs render as static HTML.
 - `ui.module` is a package name or an absolute path, since Farm imports it from
   entries it generates.
 - The MDX components this package compiles are React's. The universal UI writes

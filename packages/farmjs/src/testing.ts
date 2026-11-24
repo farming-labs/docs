@@ -97,13 +97,16 @@ export const referenceFarmDocsRenderer = {
 };
 
 const CONTENT_HTML =
-  '<h2 id="install">Install <em>&lt;now&gt;</em></h2><figure><button aria-live="polite">Copy</button><pre><code>pnpm add @farm.js/core</code></pre></figure>';
+  '<h2 id="install">Install <em>&lt;now&gt;</em></h2><figure><button aria-live="polite">Copy</button><pre><code>pnpm add @farm.js/core</code></pre></figure><h3 id="options">Options &amp; flags</h3>';
 
 function page(name: string, url: string) {
   return { type: "page" as const, name, url };
 }
 
-/** A docs page with a nested folder, an open folder, and text that needs escaping. */
+/**
+ * A docs page with a nested folder, an open folder, a table of contents, and text that needs
+ * escaping.
+ */
 export function createFarmDocsConformanceInput(): FarmDocsLayoutInput {
   const data = {
     url: "/docs/guides/routing",
@@ -136,6 +139,10 @@ export function createFarmDocsConformanceInput(): FarmDocsLayoutInput {
     config: { entry: "docs", nav: { title: "Farm <Docs>" } } as never,
     data,
     contentHtml: CONTENT_HTML,
+    toc: [
+      { title: "Install <now>", url: "#install", depth: 2 },
+      { title: "Options & flags", url: "#options", depth: 3 },
+    ],
   };
 }
 
@@ -206,6 +213,7 @@ export function defineFarmDocsRendererConformance(
       // Escaped either way (`&gt;` is optional in text), the title parses back as text.
       const container = parse(html);
       expect(container.querySelector("#nd-subnav a")?.textContent).toBe("Farm <Docs>");
+      expect(container.querySelector("#nd-toc a")?.textContent).toBe("Install <now>");
       expect(container.querySelector("docs")).toBeNull();
     });
 
@@ -231,6 +239,7 @@ export function defineFarmDocsRendererConformance(
       document.body.append(container);
       const layout = container.querySelector("#nd-docs-layout");
       const content = container.querySelector("[data-farm-docs-content]");
+      const toc = container.querySelector("#nd-toc");
       const html = container.innerHTML;
 
       // As in the browser, where the page's HTML is read back from the server's DOM.
@@ -244,6 +253,7 @@ export function defineFarmDocsRendererConformance(
         await new Promise((resolve) => setTimeout(resolve, 0));
         expect(container.querySelector("#nd-docs-layout")).toBe(layout);
         expect(container.querySelector("[data-farm-docs-content]")).toBe(content);
+        expect(container.querySelector("#nd-toc")).toBe(toc);
         expect(container.innerHTML).toBe(html);
       } finally {
         root.unmount();

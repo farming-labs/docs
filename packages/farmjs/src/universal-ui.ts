@@ -24,15 +24,29 @@ export type FarmDocsCreateElement = (
   ...children: unknown[]
 ) => unknown;
 
+/** A heading in the page's table of contents. */
+export interface FarmDocsTocItem {
+  /** The heading's text. */
+  title: string;
+  /** `#` and the heading's id. */
+  url: string;
+  /** 2 to 4, for h2 to h4. */
+  depth: number;
+}
+
 export interface FarmDocsLayoutInput {
   config: DocsConfig;
   data: DocsServerLoadResult;
   /** The page's Markdown, as HTML. */
   contentHtml: string;
+  /** The page's h2 to h4 headings. The server reads them from `contentHtml`. */
+  toc?: readonly FarmDocsTocItem[];
 }
 
 /** Marks the element whose HTML is the page's Markdown, which the browser reads back. */
 const CONTENT_ATTRIBUTE = "data-farm-docs-content";
+/** Marks the table of contents, whose items the browser reads back. */
+const TOC_ATTRIBUTE = "data-farm-docs-toc";
 
 const LAYOUT_CLASS =
   "grid overflow-x-clip min-h-(--fd-docs-height) [--fd-docs-height:100dvh] [--fd-header-height:0px] [--fd-toc-popover-height:0px] [--fd-sidebar-width:0px] [--fd-toc-width:0px] transition-[--fd-sidebar-col]";
@@ -58,6 +72,12 @@ const ARTICLE_CLASS =
   "flex flex-col min-w-0 w-full max-w-[900px] px-4 py-6 gap-4 md:px-6 md:pt-8 xl:px-8 xl:pt-14";
 const MOBILE_SIDEBAR_CLASS =
   "fixed inset-0 z-40 flex flex-col gap-0.5 overflow-y-auto bg-fd-background p-4 text-sm md:hidden";
+const TOC_CLASS =
+  "sticky top-(--fd-docs-row-1) h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] flex flex-col [grid-area:toc] w-(--fd-toc-width) pt-12 pe-4 pb-2 xl:layout:[--fd-toc-width:268px] max-xl:hidden";
+const TOC_SCROLL_CLASS =
+  "relative min-h-0 text-sm ms-px overflow-auto overscroll-contain [scrollbar-width:none] mask-[linear-gradient(to_bottom,transparent,white_16px,white_calc(100%-16px),transparent)] py-3";
+const TOC_ITEM_CLASS =
+  "prose prose-sm relative py-1.5 scroll-m-4 text-fd-muted-foreground hover:text-fd-accent-foreground transition-colors wrap-anywhere data-[active=true]:text-fd-primary";
 
 const SVG_ATTRIBUTES =
   'xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
@@ -69,6 +89,7 @@ const ICONS = {
   previous:
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>',
   next: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+  text: `<svg ${SVG_ATTRIBUTES} class="lucide lucide-text size-4"><path d="M15 18H3"></path><path d="M17 6H3"></path><path d="M21 12H3"></path></svg>`,
 } as const;
 
 function icon(h: FarmDocsCreateElement, name: keyof typeof ICONS): unknown {
@@ -246,6 +267,74 @@ function pageNavigation(h: FarmDocsCreateElement, data: DocsServerLoadResult) {
   );
 }
 
+function tocEnabled(config: DocsConfig): boolean {
+  const toc = (config.theme as { ui?: { layout?: { toc?: { enabled?: unknown } } } } | undefined)
+    ?.ui?.layout?.toc;
+  return toc?.enabled !== false;
+}
+
+/**
+ * The table of contents on wide screens, with the React UI's classes. Its indents and track live
+ * in `universal-css.ts`, since the React UI sets them as inline styles. Without headings, the
+ * placeholder still reserves the column, as on the React UI.
+ */
+function tableOfContents(
+  h: FarmDocsCreateElement,
+  config: DocsConfig,
+  toc: readonly FarmDocsTocItem[],
+) {
+  if (!tocEnabled(config)) return h("div", { id: "nd-toc-placeholder", className: "hidden" });
+  if (toc.length === 0) {
+    return h("div", {
+      id: "nd-toc-placeholder",
+      className: "hidden xl:layout:[--fd-toc-width:268px]",
+    });
+  }
+  return h(
+    "div",
+    { id: "nd-toc", className: TOC_CLASS, [TOC_ATTRIBUTE]: "" },
+    h(
+      "h3",
+      {
+        id: "toc-title",
+        className: "inline-flex items-center gap-1.5 text-sm text-fd-muted-foreground",
+      },
+      icon(h, "text"),
+      "On this page",
+    ),
+    h(
+      "div",
+      { className: TOC_SCROLL_CLASS },
+      h(
+        "div",
+        { className: "relative flex flex-col" },
+        ...toc.map((item, index) =>
+          h(
+            "a",
+            {
+              key: item.url,
+              href: item.url,
+              className: `${TOC_ITEM_CLASS}${index === 0 ? " pt-0" : ""}${index === toc.length - 1 ? " pb-0" : ""}`,
+              "data-toc-depth": String(item.depth),
+              "data-active": "false",
+            },
+            item.title,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+/** The table of contents the server wrote, read back so the browser builds the same tree. */
+function readToc(container: Element): FarmDocsTocItem[] {
+  return [...container.querySelectorAll(`[${TOC_ATTRIBUTE}] a[data-toc-depth]`)].map((link) => ({
+    title: link.textContent ?? "",
+    url: link.getAttribute("href") ?? "",
+    depth: Number(link.getAttribute("data-toc-depth")),
+  }));
+}
+
 /**
  * The docs page, built with `h`, a renderer's `createElement()`. The server and the browser call
  * it with the same input, so the browser's tree matches the HTML the server wrote.
@@ -397,7 +486,7 @@ export function createFarmDocsLayout(h: FarmDocsCreateElement, input: FarmDocsLa
         ),
       ),
     ),
-    h("div", { id: "nd-toc-placeholder", className: "hidden" }),
+    tableOfContents(h, config, input.toc ?? []),
   );
 }
 
@@ -433,6 +522,7 @@ export function hydrateFarmDocs(
       config: input.config,
       data: input.data,
       contentHtml,
+      toc: readToc(container),
     }),
   );
   const detach = attachFarmDocsBehaviors(container);
@@ -545,10 +635,40 @@ export function attachFarmDocsBehaviors(container: Element): () => void {
 
   container.addEventListener("click", onClick);
   document.addEventListener("keydown", onKeyDown);
+  const stopWatchingHeadings = watchTocHeadings(container);
   return () => {
     container.removeEventListener("click", onClick);
     document.removeEventListener("keydown", onKeyDown);
+    stopWatchingHeadings();
     for (const timer of timers) clearTimeout(timer);
     timers.clear();
   };
+}
+
+/**
+ * Marks the table of contents items whose headings are on screen. When none is, the items marked
+ * last stay marked, so the reader still sees which section they are in.
+ */
+function watchTocHeadings(container: Element): () => void {
+  const links = new Map<string, Element>();
+  for (const link of container.querySelectorAll(`[${TOC_ATTRIBUTE}] a[data-toc-depth]`)) {
+    links.set((link.getAttribute("href") ?? "").slice(1), link);
+  }
+  if (links.size === 0 || typeof IntersectionObserver === "undefined") return () => {};
+
+  const visible = new Set<string>();
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) visible.add(entry.target.id);
+      else visible.delete(entry.target.id);
+    }
+    if (visible.size === 0) return;
+    for (const [id, link] of links) {
+      link.setAttribute("data-active", visible.has(id) ? "true" : "false");
+    }
+  });
+  for (const heading of container.querySelectorAll(`[${CONTENT_ATTRIBUTE}] [id]`)) {
+    if (links.has(heading.id)) observer.observe(heading);
+  }
+  return () => observer.disconnect();
 }

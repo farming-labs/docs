@@ -3,7 +3,7 @@
  * Browsers resolve `universal.browser.ts` instead, which leaves out the Markdown renderer.
  */
 import type { FarmDocsPageRenderInput } from "./server.js";
-import { renderFarmDocsContentHtml } from "./universal-content.js";
+import { farmDocsTocFromHtml, renderFarmDocsContentHtml } from "./universal-content.js";
 import {
   createFarmDocsLayout,
   missingRenderer,
@@ -16,6 +16,7 @@ export {
   hydrateFarmDocs,
   type FarmDocsCreateElement,
   type FarmDocsLayoutInput,
+  type FarmDocsTocItem,
   type FarmDocsUniversalRoot,
 } from "./universal-ui.js";
 
@@ -29,6 +30,7 @@ export async function renderFarmDocsPage(input: FarmDocsPageRenderInput): Promis
       config: input.config,
       data: input.data,
       contentHtml,
+      toc: farmDocsTocFromHtml(contentHtml),
     }),
   );
 }

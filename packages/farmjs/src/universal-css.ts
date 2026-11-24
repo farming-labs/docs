@@ -1,7 +1,7 @@
 /**
  * Rules the renderer-neutral docs UI needs beyond the theme's stylesheet: what the theme's
  * components set as props, such as the grid the React layout sets as an inline style, nested
- * sidebar indents, and which theme toggle icon is on.
+ * sidebar and table of contents indents, the contents' track, and which theme toggle icon is on.
  *
  * The docs server appends them to `/__farm_docs/browser.css` rather than the page writing a
  * `<style>`: renderers write raw text inside `<style>` differently (Svelte adds a hydration
@@ -14,4 +14,8 @@ export const FARM_DOCS_UNIVERSAL_CSS = `#nd-docs-layout[data-farm-docs-ui]{grid-
 #nd-docs-layout[data-farm-docs-ui] [data-depth="2"]{--farm-docs-depth:2}
 #nd-docs-layout[data-farm-docs-ui] [data-depth="3"]{--farm-docs-depth:3}
 #nd-docs-layout[data-farm-docs-ui] [data-state="open"]>button>span>svg{rotate:none}
+#nd-docs-layout[data-farm-docs-ui] [data-toc-depth]{padding-inline-start:20px;border-inline-start:1px solid color-mix(in oklab,var(--color-fd-foreground) 10%,transparent)}
+#nd-docs-layout[data-farm-docs-ui] [data-toc-depth="3"]{padding-inline-start:32px}
+#nd-docs-layout[data-farm-docs-ui] [data-toc-depth="4"]{padding-inline-start:44px}
+#nd-docs-layout[data-farm-docs-ui] [data-toc-depth][data-active="true"]{border-inline-start-color:var(--color-fd-primary)}
 html:not(.dark) #nd-docs-layout[data-farm-docs-ui] [data-theme-toggle] .lucide-sun,html.dark #nd-docs-layout[data-farm-docs-ui] [data-theme-toggle] .lucide-moon{background:var(--color-fd-accent);color:var(--color-fd-accent-foreground)}`;

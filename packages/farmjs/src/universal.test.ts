@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { act, createElement } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import farmDocsBrowserCss from "./browser-css.generated.js";
 import {
   createFarmDocsConformanceInput,
@@ -13,11 +13,13 @@ import {
   referenceFarmDocsRenderer,
 } from "./testing.js";
 import {
+  attachFarmDocsBehaviors,
   createFarmDocsLayout,
   hydrateFarmDocs,
   renderFarmDocsPage,
   type FarmDocsCreateElement,
 } from "./universal.js";
+import { farmDocsTocFromHtml } from "./universal-content.js";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -104,6 +106,95 @@ describe("the universal docs UI", () => {
           : [specifier!],
       );
     expect(runtimeImports("./universal.browser.ts")).toEqual(["./universal-ui.js"]);
+  });
+
+  it("lists the page's h2 to h4 headings with an id as its table of contents", () => {
+    const html =
+      '<h1 id="title">Title</h1>' +
+      '<h2 id="install" class="group/heading"><a href="#install">Install <code>&lt;pkg&gt;</code></a>' +
+      '<button aria-live="polite"><svg></svg><span>Copy link</span></button></h2>' +
+      '<h3 id="a&amp;b">A &amp; B</h3><h4 id="deep">Deep</h4><h5 id="deeper">Deeper</h5><h2>No id</h2>';
+    expect(farmDocsTocFromHtml(html)).toEqual([
+      { title: "Install <pkg>", url: "#install", depth: 2 },
+      { title: "A & B", url: "#a&b", depth: 3 },
+      { title: "Deep", url: "#deep", depth: 4 },
+    ]);
+  });
+
+  it("reserves the contents column without headings and leaves it out when the theme turns it off", () => {
+    const render = (input: ReturnType<typeof createFarmDocsConformanceInput>) => {
+      const container = document.createElement("div");
+      container.innerHTML = referenceFarmDocsRenderer.renderToString(
+        createFarmDocsLayout(
+          referenceFarmDocsRenderer.createElement as FarmDocsCreateElement,
+          input,
+        ),
+      );
+      return container;
+    };
+    const input = createFarmDocsConformanceInput();
+    expect(render(input).querySelectorAll("#nd-toc a")).toHaveLength(2);
+
+    const empty = render({ ...input, toc: [] });
+    expect(empty.querySelector("#nd-toc")).toBeNull();
+    expect(empty.querySelector("#nd-toc-placeholder")?.className).toBe(
+      "hidden xl:layout:[--fd-toc-width:268px]",
+    );
+
+    const off = render({
+      ...input,
+      config: { ...input.config, theme: { ui: { layout: { toc: { enabled: false } } } } } as never,
+    });
+    expect(off.querySelector("#nd-toc")).toBeNull();
+    expect(off.querySelector("#nd-toc-placeholder")?.className).toBe("hidden");
+  });
+
+  it("marks the contents items whose headings are on screen", () => {
+    let report: IntersectionObserverCallback | undefined;
+    const observed: Element[] = [];
+    let disconnected = false;
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          report = callback;
+        }
+        observe(element: Element) {
+          observed.push(element);
+        }
+        disconnect() {
+          disconnected = true;
+        }
+      },
+    );
+    const container = document.createElement("div");
+    try {
+      container.innerHTML = referenceFarmDocsRenderer.renderToString(
+        createFarmDocsLayout(
+          referenceFarmDocsRenderer.createElement as FarmDocsCreateElement,
+          createFarmDocsConformanceInput(),
+        ),
+      );
+      document.body.append(container);
+      const detach = attachFarmDocsBehaviors(container);
+      expect(observed.map((element) => element.id)).toEqual(["install", "options"]);
+      const [install, options] = container.querySelectorAll("#nd-toc a");
+      const show = (index: number, isIntersecting: boolean) =>
+        report!([{ target: observed[index]!, isIntersecting }] as never, {} as never);
+
+      show(1, true);
+      expect(install?.getAttribute("data-active")).toBe("false");
+      expect(options?.getAttribute("data-active")).toBe("true");
+      // Scrolled past every heading: the last section stays marked.
+      show(1, false);
+      expect(options?.getAttribute("data-active")).toBe("true");
+
+      detach();
+      expect(disconnected).toBe(true);
+    } finally {
+      container.remove();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("says Farm must pass the renderer when it renders without one", async () => {

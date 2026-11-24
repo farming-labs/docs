@@ -11,6 +11,7 @@ export {
   hydrateFarmDocs,
   type FarmDocsCreateElement,
   type FarmDocsLayoutInput,
+  type FarmDocsTocItem,
   type FarmDocsUniversalRoot,
 } from "./universal-ui.js";
 
