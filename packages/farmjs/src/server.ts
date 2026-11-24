@@ -428,11 +428,15 @@ async function renderFarmDocsUI(
   ui: FarmDocsServerUIModule,
   props: FarmDocsPageProps,
   loadRenderer: (() => Promise<FarmDocsServerRenderer>) | undefined,
-): Promise<{ markup: string; hydrationScript?: string }> {
+): Promise<{ markup: string; hydrationScript?: string; solidRenderId?: string }> {
   if (typeof ui.renderFarmDocsPage === "function") {
     const renderer = loadRenderer ? await loadRenderer() : undefined;
     const markup = await ui.renderFarmDocsPage(renderer ? { ...props, renderer } : props);
-    return { markup, hydrationScript: renderer?.generateHydrationScript?.() };
+    return {
+      markup,
+      hydrationScript: renderer?.generateHydrationScript?.(),
+      solidRenderId: renderer?.name === "solid" ? "" : undefined,
+    };
   }
   if (typeof ui.FarmDocsPage === "function") {
     reactServerModules ??= Promise.all([import("react"), import("react-dom/server")]);
@@ -3107,6 +3111,13 @@ function renderFarmDocsDocument(input: {
   markup: string;
   /** The app renderer's hydration script, which runs before the client entry hydrates. */
   hydrationScript?: string;
+  /**
+   * Solid's render id for the page. Farm's Solid renderer hydrates a container from the id its
+   * `data-farm-solid-render-id` names, and guesses one from the first hydration key without it.
+   * The page renders from Solid's root context, whose id is empty, and the guess misreads a root
+   * key such as `a600` as render id `a6`.
+   */
+  solidRenderId?: string;
   clientEntry: string;
   stylesheets: readonly string[];
   fonts?: FarmDocsRuntimeFonts;
@@ -3145,7 +3156,7 @@ function renderFarmDocsDocument(input: {
     .join("\n  ")}
 </head>
 <body>
-  <div id="root"><div id="farm-docs-root"${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
+  <div id="root"><div id="farm-docs-root"${input.solidRenderId === undefined ? "" : ` data-farm-solid-render-id="${escapeDocumentText(input.solidRenderId)}"`}${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
   <script>window.__FARM_DOCS_ADAPTER__=${serializeInlineJson({
     config: clientConfig,
     data,
@@ -3268,7 +3279,7 @@ function createFarmDocsSingleRuntimeHandler(
       ? await loadUIModule()
       : ((await import("./react.js")) as FarmDocsServerUIModule);
     await ui.loadFarmDocsPageModule?.(data);
-    const { markup, hydrationScript } = await renderFarmDocsUI(
+    const { markup, hydrationScript, solidRenderId } = await renderFarmDocsUI(
       ui,
       { config: runtimeConfig, data },
       options.loadRenderer,
@@ -3279,6 +3290,7 @@ function createFarmDocsSingleRuntimeHandler(
       data,
       markup,
       hydrationScript,
+      solidRenderId,
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
       fonts,

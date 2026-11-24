@@ -817,6 +817,22 @@ describe("createFarmDocsRuntimeHandler", () => {
     expect(html.indexOf(script)).toBeLessThan(html.indexOf('src="/farm-client.js"'));
   });
 
+  it("names Solid's root render id on the docs root, so Solid does not guess it", async () => {
+    const render = (name: string) =>
+      createFarmDocsRuntimeHandler(config, {
+        loadUIModule: async () => ({
+          renderFarmDocsPage: () => "<main>Introduction</main>",
+          hydrateFarmDocs: () => undefined,
+        }),
+        loadRenderer: async () => ({ name, createElement: () => null, renderToString: () => "" }),
+      })(new Request("https://farm.example/docs")).then((response) => response!.text());
+
+    expect(await render("solid")).toContain(
+      '<div id="farm-docs-root" data-farm-solid-render-id=""><main>Introduction</main>',
+    );
+    expect(await render("vue")).not.toContain("data-farm-solid-render-id");
+  });
+
   it("says what a docs UI module must export when it renders nothing", async () => {
     const handler = createFarmDocsRuntimeHandler(config, {
       loadUIModule: async () => ({ hydrateFarmDocs: () => undefined }),
