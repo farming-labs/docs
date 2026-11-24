@@ -128,6 +128,7 @@ import {
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
+import { FARM_DOCS_UNIVERSAL_CSS } from "./universal-css.js";
 import { hasUnserializableValues } from "./config-values.js";
 import {
   createFarmDocsResponseCache,
@@ -159,7 +160,9 @@ function layerFarmDocsBrowserCss(css: string): string {
 let layeredFarmDocsBrowserCss: string | undefined;
 
 function loadFarmDocsBrowserCss(): string {
-  layeredFarmDocsBrowserCss ??= layerFarmDocsBrowserCss(farmDocsBrowserCss);
+  layeredFarmDocsBrowserCss ??= layerFarmDocsBrowserCss(
+    `${farmDocsBrowserCss}\n${FARM_DOCS_UNIVERSAL_CSS}`,
+  );
   return layeredFarmDocsBrowserCss;
 }
 
@@ -348,10 +351,45 @@ export interface FarmDocsPageProps {
   data: DocsServerLoadResult;
 }
 
+/**
+ * The app renderer's server module, as Farm reads it from `renderer.server`: the exports a docs
+ * UI needs to build a page with it and write the page's HTML.
+ */
+export interface FarmDocsServerRenderer {
+  name: string;
+  createElement(type: unknown, props?: unknown, ...children: unknown[]): unknown;
+  renderToString(element: unknown): string | Promise<string>;
+  /**
+   * The script a renderer such as Solid hydrates against. The docs document writes it into the
+   * head, as Farm does on the app's own pages.
+   */
+  generateHydrationScript?(): string;
+}
+
+/** The app renderer's client module, as Farm reads it from `renderer.client`. */
+export interface FarmDocsClientRenderer {
+  createElement(type: unknown, props?: unknown, ...children: unknown[]): unknown;
+  hydrateRoot(container: Element, element: unknown): { unmount(): void };
+}
+
+/** What the server passes a docs UI's `renderFarmDocsPage()`. */
+export interface FarmDocsPageRenderInput extends FarmDocsPageProps {
+  /**
+   * The app's renderer. Farm passes it from releases that run a docs UI written for any
+   * renderer; a UI that builds its page with it says so when it is missing.
+   */
+  renderer?: FarmDocsServerRenderer;
+}
+
 /** What Farm passes a docs UI's `hydrateFarmDocs()` in the browser. */
 export interface FarmDocsHydrateInput extends FarmDocsPageProps {
   /** The docs config module, when the server flagged values its JSON copy dropped. */
   configModule?: unknown;
+  /**
+   * The app's renderer. Farm passes it to a UI written for a renderer other than React, which
+   * imports its own.
+   */
+  renderer?: FarmDocsClientRenderer;
 }
 
 /**
@@ -364,7 +402,7 @@ export interface FarmDocsUIModule {
    * The HTML of a docs page's body. The server writes it into the page's `#farm-docs-root`
    * element, inside the document it renders around it.
    */
-  renderFarmDocsPage(props: FarmDocsPageProps): string | Promise<string>;
+  renderFarmDocsPage(input: FarmDocsPageRenderInput): string | Promise<string>;
   /**
    * Attaches to the server's HTML in the browser. Farm calls it on a page the docs server
    * rendered. `createFarmDocsNavigator()` from `@farming-labs/farmjs/navigation` moves between
@@ -389,12 +427,22 @@ let reactServerModules: Promise<[typeof import("react"), ReactDOMServerModule]> 
 async function renderFarmDocsUI(
   ui: FarmDocsServerUIModule,
   props: FarmDocsPageProps,
-): Promise<string> {
-  if (typeof ui.renderFarmDocsPage === "function") return ui.renderFarmDocsPage(props);
+  loadRenderer: (() => Promise<FarmDocsServerRenderer>) | undefined,
+): Promise<{ markup: string; hydrationScript?: string }> {
+  if (typeof ui.renderFarmDocsPage === "function") {
+    const renderer = loadRenderer ? await loadRenderer() : undefined;
+    const markup = await ui.renderFarmDocsPage(renderer ? { ...props, renderer } : props);
+    return { markup, hydrationScript: renderer?.generateHydrationScript?.() };
+  }
   if (typeof ui.FarmDocsPage === "function") {
     reactServerModules ??= Promise.all([import("react"), import("react-dom/server")]);
     const [React, ReactDOMServer] = await reactServerModules;
-    return renderFarmDocsMarkup(ReactDOMServer, React.createElement(ui.FarmDocsPage, props));
+    return {
+      markup: await renderFarmDocsMarkup(
+        ReactDOMServer,
+        React.createElement(ui.FarmDocsPage, props),
+      ),
+    };
   }
   throw new Error(
     "The docs UI module exports neither renderFarmDocsPage() nor a FarmDocsPage component. " +
@@ -423,6 +471,11 @@ export interface FarmDocsRuntimeHandlerOptions {
    * `loadUIModule` is absent.
    */
   loadReactModule?: () => Promise<FarmDocsServerUIModule>;
+  /**
+   * Loads the app renderer's server module, which a UI's `renderFarmDocsPage()` receives as
+   * `renderer`. Farm passes it from releases that run a UI written for any renderer.
+   */
+  loadRenderer?: () => Promise<FarmDocsServerRenderer>;
   /**
    * The content cannot change while this handler runs, as in a production
    * build. Navigation and the last-modified manifest are then read once
@@ -3052,6 +3105,8 @@ function renderFarmDocsDocument(input: {
   config: DocsConfig & Record<string, any>;
   data: DocsServerLoadResult;
   markup: string;
+  /** The app renderer's hydration script, which runs before the client entry hydrates. */
+  hydrationScript?: string;
   clientEntry: string;
   stylesheets: readonly string[];
   fonts?: FarmDocsRuntimeFonts;
@@ -3084,6 +3139,7 @@ function renderFarmDocsDocument(input: {
   ${renderThemeBootstrap(config)}
   ${fontPreloads}
   <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
+  ${input.hydrationScript ?? ""}
   ${input.stylesheets
     .map((href) => `<link rel="stylesheet" href="${escapeDocumentText(href)}">`)
     .join("\n  ")}
@@ -3212,12 +3268,17 @@ function createFarmDocsSingleRuntimeHandler(
       ? await loadUIModule()
       : ((await import("./react.js")) as FarmDocsServerUIModule);
     await ui.loadFarmDocsPageModule?.(data);
-    const markup = await renderFarmDocsUI(ui, { config: runtimeConfig, data });
+    const { markup, hydrationScript } = await renderFarmDocsUI(
+      ui,
+      { config: runtimeConfig, data },
+      options.loadRenderer,
+    );
     const fonts = await options.resolveLayoutFonts?.(pathname);
     const html = renderFarmDocsDocument({
       config: runtimeConfig,
       data,
       markup,
+      hydrationScript,
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
       fonts,

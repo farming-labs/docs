@@ -24,6 +24,12 @@ export const FARM_DOCS_NAVIGATION_HEADER = "x-farm-docs-navigation" as const;
 /** The React docs UI this package ships. */
 export const FARM_DOCS_REACT_UI = "@farming-labs/farmjs/react" as const;
 
+/**
+ * The docs UI for an app on any other renderer: it builds pages with the app renderer itself.
+ * `withDocs()` uses it when the app's `renderer` is not React and `ui` names no other.
+ */
+export const FARM_DOCS_UNIVERSAL_UI = "@farming-labs/farmjs/universal" as const;
+
 export interface FarmDocsRuntimeAdapter {
   id: typeof FARM_DOCS_ADAPTER_ID;
   protocol: typeof FARM_DOCS_ADAPTER_PROTOCOL;

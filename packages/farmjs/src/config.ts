@@ -1,6 +1,10 @@
 import type { DocsConfig } from "@farming-labs/docs";
 import { docsAgentSkillsBundle } from "./agent-skills.js";
-import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
+import {
+  FARM_DOCS_UNIVERSAL_UI,
+  farmDocsRuntimeAdapter,
+  type FarmDocsRuntimeAdapter,
+} from "./runtime.js";
 import { docsShell } from "./shell-plugin.js";
 import { docsMdx, type FarmDocsCodeBlockThemes } from "./vite.js";
 
@@ -40,8 +44,9 @@ export interface FarmDocsAdapterOptions {
   shell?: string;
   /**
    * The docs UI, for an app that renders with something other than this package's React UI.
-   * Defaults to the React UI. The docs engine (content, navigation, search, Markdown, llms.txt,
-   * MCP) is the same either way.
+   * Defaults to the React UI in a React app, and in an app with another `renderer`, to
+   * `@farming-labs/farmjs/universal`, which builds pages with that renderer. The docs engine
+   * (content, navigation, search, Markdown, llms.txt, MCP) is the same either way.
    */
   ui?: FarmDocsUIOptions;
 }
@@ -59,6 +64,8 @@ export interface FarmDocsUIOptions {
 
 export interface FarmConfigLike {
   docs?: boolean | FarmDocsCoreConfig;
+  /** Farm's renderer descriptor. Only its `name` is read. */
+  renderer?: unknown;
   vite?: FarmViteConfigLike | FarmViteConfigFactory;
   [key: string]: unknown;
 }
@@ -107,9 +114,23 @@ function withDocsViteConfig(
   return appendDocsVitePlugins(value, options);
 }
 
+/** The app renderer's name, from Farm's `renderer` descriptor; React when it names none. */
+function farmRendererName(renderer: unknown): string {
+  const name = (renderer as { name?: unknown } | null | undefined)?.name;
+  return typeof name === "string" && name !== "" ? name : "react";
+}
+
 /** The adapter descriptor for the app's docs UI. Reports every problem with `ui` at once. */
-function resolveFarmDocsAdapter(options: FarmDocsAdapterOptions): FarmDocsRuntimeAdapter {
-  const { ui, shell } = options;
+function resolveFarmDocsAdapter(
+  options: FarmDocsAdapterOptions,
+  appRenderer: string,
+): FarmDocsRuntimeAdapter {
+  const { shell } = options;
+  const ui =
+    options.ui ??
+    (appRenderer === "react"
+      ? undefined
+      : { module: FARM_DOCS_UNIVERSAL_UI, renderer: appRenderer });
   if (!ui) return farmDocsRuntimeAdapter;
 
   const issues: string[] = [];
@@ -128,8 +149,12 @@ function resolveFarmDocsAdapter(options: FarmDocsAdapterOptions): FarmDocsRuntim
   }
   if (shell) {
     issues.push(
-      "`shell` wraps the pages of this package's React UI. Render what it adds in your `ui` " +
-        "module instead.",
+      options.ui
+        ? "`shell` wraps the pages of this package's React UI. Render what it adds in your `ui` " +
+            "module instead."
+        : `\`shell\` wraps the pages of this package's React UI, and the app renders with ` +
+            `${JSON.stringify(appRenderer)}, so its docs use the renderer-neutral UI, which has ` +
+            "no shell. Remove `shell`, or render what it adds in a UI of your own named with `ui`.",
     );
   }
   if (issues.length > 0) {
@@ -154,7 +179,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
   options: FarmDocsAdapterOptions = {},
 ): FarmConfigWithDocs<TConfig> {
   const existing = normalizeExistingDocs(farmConfig.docs);
-  const adapter = resolveFarmDocsAdapter(options);
+  const adapter = resolveFarmDocsAdapter(options, farmRendererName(farmConfig.renderer));
   const enabled = options.enabled ?? true;
   const config = options.config ? { ...existing.config, ...options.config } : existing.config;
 
