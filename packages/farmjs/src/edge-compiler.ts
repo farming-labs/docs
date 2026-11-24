@@ -209,7 +209,7 @@ export async function compileFarmDocsEdgeManifest(
     rootDir: options.rootDir,
     clientEntry: options.clientEntry,
     stylesheets: options.stylesheets,
-    loadReactModule: async () => ({
+    loadUIModule: async () => ({
       FarmDocsPage: ({ config: pageConfig, data }: { config: DocsConfig; data: any }) =>
         createElement(FarmDocsPageRenderer, {
           config: pageConfig,

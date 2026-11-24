@@ -377,6 +377,89 @@ function resolveWorkspaceAliases() {
   ];
 }
 
+function packageRoot(file: string): string {
+  let current = path.dirname(file);
+  while (!fs.existsSync(path.join(current, "package.json"))) {
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return `${normalizePath(current)}/`;
+}
+
+const SERVER_REACT_ID = "\0farming-labs-farmjs-server-react:";
+
+/**
+ * Keeps the docs pages' server render on React during development when the app's Vite config
+ * points `react` at another library, as `@preact/preset-vite` does with `preact/compat`.
+ *
+ * The pages, this package, and the theme render with React, and the theme's MDX components
+ * come from packages Node loads with React. An alias reaches only the modules Vite transforms,
+ * so it would split one render between two libraries, and Preact's string renderer drops React
+ * elements without an error. Farm's production server keeps `react` external for apps on
+ * other renderers, so it loads React there already; this gives development the same modules.
+ */
+function docsServerReact(): Plugin {
+  const requireReact = createRequire(import.meta.url);
+  const roots = [packageRoot(fileURLToPath(import.meta.url))];
+  try {
+    roots.push(packageRoot(requireReact.resolve("@farming-labs/theme/mdx")));
+  } catch {
+    // Installed copies of the theme match the node_modules pattern below.
+  }
+  const isDocsModule = (id: string) => {
+    const file = normalizePath(id.split("?", 1)[0]);
+    return (
+      /\.mdx?$/.test(file) ||
+      /\/node_modules\/@farming-labs\/(?:farmjs|theme)\//.test(file) ||
+      roots.some((root) => file.startsWith(root))
+    );
+  };
+  let aliased = false;
+  return {
+    name: "farming-labs-farmjs-server-react",
+    apply: "serve",
+    configResolved(config) {
+      aliased = config.resolve.alias.some(({ find }) =>
+        typeof find === "string"
+          ? find === "react" || find === "react-dom"
+          : find.test("react") || find.test("react-dom"),
+      );
+    },
+    resolveId: {
+      // Vite's alias plugin has no order, so this runs before it rewrites the specifier.
+      order: "pre",
+      handler(source, importer, options) {
+        if (!aliased || !importer || !/^react(?:-dom)?(?:\/|$)/.test(source)) return null;
+        if (this.environment?.config.consumer !== "server" && !options?.ssr) return null;
+        return isDocsModule(importer) ? SERVER_REACT_ID + source : null;
+      },
+    },
+    load(id) {
+      if (!id.startsWith(SERVER_REACT_ID)) return null;
+      const specifier = id.slice(SERVER_REACT_ID.length);
+      let names: string[];
+      try {
+        names = Object.keys(requireReact(specifier)).filter(
+          (name) => name !== "default" && /^[A-Za-z_$][\w$]*$/.test(name),
+        );
+      } catch (error) {
+        throw new Error(
+          `@farming-labs/farmjs renders docs pages with React on the server and could not load ` +
+            `"${specifier}". Install \`react\` and \`react-dom\` in the app.`,
+          { cause: error },
+        );
+      }
+      return [
+        'import { createRequire } from "node:module";',
+        `const mod = createRequire(${JSON.stringify(import.meta.url)})(${JSON.stringify(specifier)});`,
+        "export default mod;",
+        names.length > 0 ? `export const { ${names.join(", ")} } = mod;` : "",
+      ].join("\n");
+    },
+  };
+}
+
 export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
   const aliases = resolveWorkspaceAliases();
   const codeBlockThemes = resolveFarmDocsCodeBlockThemes(options.codeBlockThemes);
@@ -497,6 +580,7 @@ export function docsMdx(options: FarmDocsMdxOptions = {}): PluginOption {
       },
     },
     cachedCompiler,
+    docsServerReact(),
   ];
 }
 

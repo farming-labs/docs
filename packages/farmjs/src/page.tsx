@@ -49,6 +49,22 @@ export interface FarmDocsPageRendererProps {
   navigation?: BrowserNavigationAdapter;
 }
 
+/** The components a page's compiled Markdown renders with, from the docs config. */
+export function getFarmDocsMDXComponents(config: DocsConfig): ReturnType<typeof getMDXComponents> {
+  const resolvedConfig = withRenderableIcons(config);
+  const promptOpenDocsProviders =
+    resolvedConfig.pageActions?.openDocs && typeof resolvedConfig.pageActions.openDocs === "object"
+      ? (resolvedConfig.pageActions.openDocs
+          .providers as GetMDXComponentsOptions["openDocsProviders"])
+      : undefined;
+  return getMDXComponents(resolvedConfig.components as Record<string, unknown>, {
+    onCopyClick: resolvedConfig.onCopyClick,
+    theme: resolvedConfig.theme,
+    icons: resolvedConfig.icons as GetMDXComponentsOptions["icons"],
+    openDocsProviders: promptOpenDocsProviders,
+  });
+}
+
 /** Renderer shared by Vite-loaded pages and build-time edge snapshots. */
 export function FarmDocsPageRenderer({
   config,
@@ -57,12 +73,6 @@ export function FarmDocsPageRenderer({
   navigation,
 }: FarmDocsPageRendererProps) {
   const resolvedConfig = withRenderableIcons(config);
-  const promptIconRegistry = resolvedConfig.icons as GetMDXComponentsOptions["icons"];
-  const promptOpenDocsProviders =
-    resolvedConfig.pageActions?.openDocs && typeof resolvedConfig.pageActions.openDocs === "object"
-      ? (resolvedConfig.pageActions.openDocs
-          .providers as GetMDXComponentsOptions["openDocsProviders"])
-      : undefined;
   const themeOptions = themeOptionsFromConfig(config);
 
   if (!Content) {
@@ -115,14 +125,7 @@ export function FarmDocsPageRenderer({
         structuredData={data.structuredData}
         editOnGithubUrl={data.editOnGithub}
       >
-        <Content
-          components={getMDXComponents(resolvedConfig.components as Record<string, unknown>, {
-            onCopyClick: resolvedConfig.onCopyClick,
-            theme: resolvedConfig.theme,
-            icons: promptIconRegistry,
-            openDocsProviders: promptOpenDocsProviders,
-          })}
-        />
+        <Content components={getFarmDocsMDXComponents(config)} />
       </BrowserDocsLayout>
     </BrowserRootProvider>
   );

@@ -3,8 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import matter from "gray-matter";
-import { createElement, type ComponentType, type ReactElement } from "react";
-import * as ReactDOMServer from "react-dom/server";
+import type { ComponentType, ReactElement } from "react";
 import {
   applySidebarFolderIndexBehavior,
   buildDocsAskAIContext,
@@ -129,6 +128,7 @@ import {
 } from "./content.js";
 import type { PageNode, NavNode, NavTree, ContentPage } from "./content.js";
 import farmDocsBrowserCss from "./browser-css.generated.js";
+import { FARM_DOCS_UNIVERSAL_CSS } from "./universal-css.js";
 import { hasUnserializableValues } from "./config-values.js";
 import {
   createFarmDocsResponseCache,
@@ -160,7 +160,9 @@ function layerFarmDocsBrowserCss(css: string): string {
 let layeredFarmDocsBrowserCss: string | undefined;
 
 function loadFarmDocsBrowserCss(): string {
-  layeredFarmDocsBrowserCss ??= layerFarmDocsBrowserCss(farmDocsBrowserCss);
+  layeredFarmDocsBrowserCss ??= layerFarmDocsBrowserCss(
+    `${farmDocsBrowserCss}\n${FARM_DOCS_UNIVERSAL_CSS}`,
+  );
   return layeredFarmDocsBrowserCss;
 }
 
@@ -172,8 +174,13 @@ function loadFarmDocsBrowserCss(): string {
 // twice. Write completed content in place instead.
 const FARM_DOCS_RENDER_OPTIONS = { progressiveChunkSize: Number.POSITIVE_INFINITY };
 
-async function renderFarmDocsMarkup(element: ReactElement): Promise<string> {
-  const server = ReactDOMServer as typeof ReactDOMServer & {
+type ReactDOMServerModule = typeof import("react-dom/server");
+
+async function renderFarmDocsMarkup(
+  ReactDOMServer: ReactDOMServerModule,
+  element: ReactElement,
+): Promise<string> {
+  const server = ReactDOMServer as ReactDOMServerModule & {
     renderToReadableStream?: (
       children: ReactElement,
       options?: { onError?: (error: unknown) => void; progressiveChunkSize?: number },
@@ -338,10 +345,113 @@ interface FarmDocsRuntimeFonts {
   code?: FarmDocsRuntimeFont;
 }
 
-interface FarmDocsReactModule {
-  FarmDocsPage: ComponentType<{ config: DocsConfig; data: DocsServerLoadResult }>;
-  /** Loads the page's compiled Markdown, which FarmDocsPage renders synchronously. */
+/** What a docs UI renders a page from. */
+export interface FarmDocsPageProps {
+  config: DocsConfig;
+  data: DocsServerLoadResult;
+}
+
+/**
+ * The app renderer's server module, as Farm reads it from `renderer.server`: the exports a docs
+ * UI needs to build a page with it and write the page's HTML.
+ */
+export interface FarmDocsServerRenderer {
+  name: string;
+  createElement(type: unknown, props?: unknown, ...children: unknown[]): unknown;
+  renderToString(element: unknown): string | Promise<string>;
+  /**
+   * The script a renderer such as Solid hydrates against. The docs document writes it into the
+   * head, as Farm does on the app's own pages.
+   */
+  generateHydrationScript?(): string;
+}
+
+/** The app renderer's client module, as Farm reads it from `renderer.client`. */
+export interface FarmDocsClientRenderer {
+  createElement(type: unknown, props?: unknown, ...children: unknown[]): unknown;
+  hydrateRoot(container: Element, element: unknown): { unmount(): void };
+}
+
+/** What the server passes a docs UI's `renderFarmDocsPage()`. */
+export interface FarmDocsPageRenderInput extends FarmDocsPageProps {
+  /**
+   * The app's renderer. Farm passes it from releases that run a docs UI written for any
+   * renderer; a UI that builds its page with it says so when it is missing.
+   */
+  renderer?: FarmDocsServerRenderer;
+}
+
+/** What Farm passes a docs UI's `hydrateFarmDocs()` in the browser. */
+export interface FarmDocsHydrateInput extends FarmDocsPageProps {
+  /** The docs config module, when the server flagged values its JSON copy dropped. */
+  configModule?: unknown;
+  /**
+   * The app's renderer. Farm passes it to a UI written for a renderer other than React, which
+   * imports its own.
+   */
+  renderer?: FarmDocsClientRenderer;
+}
+
+/**
+ * A docs UI: the module that renders docs pages, on the server and in the browser. This package
+ * ships a React one. An app with another renderer names its own with `withDocs({ ui })`; the
+ * docs engine (content, navigation, search, Markdown, llms.txt, MCP) stays this package's.
+ */
+export interface FarmDocsUIModule {
+  /**
+   * The HTML of a docs page's body. The server writes it into the page's `#farm-docs-root`
+   * element, inside the document it renders around it.
+   */
+  renderFarmDocsPage(input: FarmDocsPageRenderInput): string | Promise<string>;
+  /**
+   * Attaches to the server's HTML in the browser. Farm calls it on a page the docs server
+   * rendered. `createFarmDocsNavigator()` from `@farming-labs/farmjs/navigation` moves between
+   * docs pages without reloading.
+   */
+  hydrateFarmDocs(input: FarmDocsHydrateInput): unknown;
+  /** Loads what a page renders before it renders: on the server, and before hydrating. */
   loadFarmDocsPageModule?(data: DocsServerLoadResult): Promise<void>;
+}
+
+/** The server's view of a UI module. React's renders through `FarmDocsPage`. */
+type FarmDocsServerUIModule = Partial<FarmDocsUIModule> & {
+  FarmDocsPage?: ComponentType<FarmDocsPageProps>;
+};
+
+let reactServerModules: Promise<[typeof import("react"), ReactDOMServerModule]> | undefined;
+
+/**
+ * The page body's HTML, from the UI's own renderer, or from React for a UI that exports a
+ * `FarmDocsPage` component. React loads only then, so a UI with another renderer needs none.
+ */
+async function renderFarmDocsUI(
+  ui: FarmDocsServerUIModule,
+  props: FarmDocsPageProps,
+  loadRenderer: (() => Promise<FarmDocsServerRenderer>) | undefined,
+): Promise<{ markup: string; hydrationScript?: string; solidRenderId?: string }> {
+  if (typeof ui.renderFarmDocsPage === "function") {
+    const renderer = loadRenderer ? await loadRenderer() : undefined;
+    const markup = await ui.renderFarmDocsPage(renderer ? { ...props, renderer } : props);
+    return {
+      markup,
+      hydrationScript: renderer?.generateHydrationScript?.(),
+      solidRenderId: renderer?.name === "solid" ? "" : undefined,
+    };
+  }
+  if (typeof ui.FarmDocsPage === "function") {
+    reactServerModules ??= Promise.all([import("react"), import("react-dom/server")]);
+    const [React, ReactDOMServer] = await reactServerModules;
+    return {
+      markup: await renderFarmDocsMarkup(
+        ReactDOMServer,
+        React.createElement(ui.FarmDocsPage, props),
+      ),
+    };
+  }
+  throw new Error(
+    "The docs UI module exports neither renderFarmDocsPage() nor a FarmDocsPage component. " +
+      "Export renderFarmDocsPage() from the module withDocs({ ui }) names.",
+  );
 }
 
 export interface FarmDocsRuntimeHandlerOptions {
@@ -355,8 +465,21 @@ export interface FarmDocsRuntimeHandlerOptions {
   resolveLayoutFonts?: (
     pathname: string,
   ) => FarmDocsRuntimeFonts | undefined | Promise<FarmDocsRuntimeFonts | undefined>;
-  /** Development hook used by Farm to load the React entry through Vite SSR. */
-  loadReactModule?: () => Promise<FarmDocsReactModule>;
+  /**
+   * Loads the docs UI through the host's module pipeline, as the browser loads it. Farm passes
+   * it from releases that run a UI written for any renderer.
+   */
+  loadUIModule?: () => Promise<FarmDocsServerUIModule>;
+  /**
+   * @deprecated Farm releases before `loadUIModule` pass the React UI with it. Read only when
+   * `loadUIModule` is absent.
+   */
+  loadReactModule?: () => Promise<FarmDocsServerUIModule>;
+  /**
+   * Loads the app renderer's server module, which a UI's `renderFarmDocsPage()` receives as
+   * `renderer`. Farm passes it from releases that run a UI written for any renderer.
+   */
+  loadRenderer?: () => Promise<FarmDocsServerRenderer>;
   /**
    * The content cannot change while this handler runs, as in a production
    * build. Navigation and the last-modified manifest are then read once
@@ -2986,6 +3109,15 @@ function renderFarmDocsDocument(input: {
   config: DocsConfig & Record<string, any>;
   data: DocsServerLoadResult;
   markup: string;
+  /** The app renderer's hydration script, which runs before the client entry hydrates. */
+  hydrationScript?: string;
+  /**
+   * Solid's render id for the page. Farm's Solid renderer hydrates a container from the id its
+   * `data-farm-solid-render-id` names, and guesses one from the first hydration key without it.
+   * The page renders from Solid's root context, whose id is empty, and the guess misreads a root
+   * key such as `a600` as render id `a6`.
+   */
+  solidRenderId?: string;
   clientEntry: string;
   stylesheets: readonly string[];
   fonts?: FarmDocsRuntimeFonts;
@@ -3018,12 +3150,13 @@ function renderFarmDocsDocument(input: {
   ${renderThemeBootstrap(config)}
   ${fontPreloads}
   <link rel="stylesheet" href="${FARM_DOCS_BROWSER_CSS_PATH}">
+  ${input.hydrationScript ?? ""}
   ${input.stylesheets
     .map((href) => `<link rel="stylesheet" href="${escapeDocumentText(href)}">`)
     .join("\n  ")}
 </head>
 <body>
-  <div id="root"><div id="farm-docs-root"${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
+  <div id="root"><div id="farm-docs-root"${input.solidRenderId === undefined ? "" : ` data-farm-solid-render-id="${escapeDocumentText(input.solidRenderId)}"`}${rootClasses ? ` class="${escapeDocumentText(rootClasses)}"` : ""}${rootStyle ? ` style="${escapeDocumentText(rootStyle)}"` : ""}>${input.markup}</div></div>
   <script>window.__FARM_DOCS_ADAPTER__=${serializeInlineJson({
     config: clientConfig,
     data,
@@ -3141,21 +3274,23 @@ function createFarmDocsSingleRuntimeHandler(
       }
       throw error;
     }
-    const reactModule = options.loadReactModule
-      ? await options.loadReactModule()
-      : ((await import("./react.js")) as FarmDocsReactModule);
-    await reactModule.loadFarmDocsPageModule?.(data);
-    const markup = await renderFarmDocsMarkup(
-      createElement(reactModule.FarmDocsPage, {
-        config: runtimeConfig,
-        data,
-      }),
+    const loadUIModule = options.loadUIModule ?? options.loadReactModule;
+    const ui = loadUIModule
+      ? await loadUIModule()
+      : ((await import("./react.js")) as FarmDocsServerUIModule);
+    await ui.loadFarmDocsPageModule?.(data);
+    const { markup, hydrationScript, solidRenderId } = await renderFarmDocsUI(
+      ui,
+      { config: runtimeConfig, data },
+      options.loadRenderer,
     );
     const fonts = await options.resolveLayoutFonts?.(pathname);
     const html = renderFarmDocsDocument({
       config: runtimeConfig,
       data,
       markup,
+      hydrationScript,
+      solidRenderId,
       clientEntry: options.clientEntry ?? "/farm-client.js",
       stylesheets: options.stylesheets ?? [],
       fonts,

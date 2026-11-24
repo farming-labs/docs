@@ -1,6 +1,10 @@
 import type { DocsConfig } from "@farming-labs/docs";
 import { docsAgentSkillsBundle } from "./agent-skills.js";
-import { farmDocsRuntimeAdapter, type FarmDocsRuntimeAdapter } from "./runtime.js";
+import {
+  FARM_DOCS_UNIVERSAL_UI,
+  farmDocsRuntimeAdapter,
+  type FarmDocsRuntimeAdapter,
+} from "./runtime.js";
 import { docsShell } from "./shell-plugin.js";
 import { docsMdx, type FarmDocsCodeBlockThemes } from "./vite.js";
 
@@ -38,10 +42,30 @@ export interface FarmDocsAdapterOptions {
    * to other routes, such as analytics or site-wide widgets.
    */
   shell?: string;
+  /**
+   * The docs UI, for an app that renders with something other than this package's React UI.
+   * Defaults to the React UI in a React app, and in an app with another `renderer`, to
+   * `@farming-labs/farmjs/universal`, which builds pages with that renderer. The docs engine
+   * (content, navigation, search, Markdown, llms.txt, MCP) is the same either way.
+   */
+  ui?: FarmDocsUIOptions;
+}
+
+export interface FarmDocsUIOptions {
+  /**
+   * The module that renders docs pages: it exports `renderFarmDocsPage()` and
+   * `hydrateFarmDocs()`, as `FarmDocsUIModule` describes. A package name or an absolute path,
+   * since Farm imports it from entries it generates.
+   */
+  module: string;
+  /** The Farm renderer the UI is written for, by name, such as `"svelte"` or `"leaf"`. */
+  renderer: string;
 }
 
 export interface FarmConfigLike {
   docs?: boolean | FarmDocsCoreConfig;
+  /** Farm's renderer descriptor. Only its `name` is read. */
+  renderer?: unknown;
   vite?: FarmViteConfigLike | FarmViteConfigFactory;
   [key: string]: unknown;
 }
@@ -90,6 +114,59 @@ function withDocsViteConfig(
   return appendDocsVitePlugins(value, options);
 }
 
+/** The app renderer's name, from Farm's `renderer` descriptor; React when it names none. */
+function farmRendererName(renderer: unknown): string {
+  const name = (renderer as { name?: unknown } | null | undefined)?.name;
+  return typeof name === "string" && name !== "" ? name : "react";
+}
+
+/** The adapter descriptor for the app's docs UI. Reports every problem with `ui` at once. */
+function resolveFarmDocsAdapter(
+  options: FarmDocsAdapterOptions,
+  appRenderer: string,
+): FarmDocsRuntimeAdapter {
+  const { shell } = options;
+  const ui =
+    options.ui ??
+    (appRenderer === "react"
+      ? undefined
+      : { module: FARM_DOCS_UNIVERSAL_UI, renderer: appRenderer });
+  if (!ui) return farmDocsRuntimeAdapter;
+
+  const issues: string[] = [];
+  if (typeof ui.module !== "string" || ui.module.trim() === "") {
+    issues.push('`ui.module` must name the docs UI module, such as "@acme/docs-ui".');
+  } else if (/^\.\.?[\\/]/.test(ui.module)) {
+    issues.push(
+      `\`ui.module\` ${JSON.stringify(ui.module)} is relative, and Farm imports it from entries ` +
+        "it generates in other directories. Use a package name or an absolute path.",
+    );
+  }
+  if (typeof ui.renderer !== "string" || ui.renderer.trim() === "") {
+    issues.push(
+      '`ui.renderer` must name the Farm renderer the UI is written for, such as "svelte".',
+    );
+  }
+  if (shell) {
+    issues.push(
+      options.ui
+        ? "`shell` wraps the pages of this package's React UI. Render what it adds in your `ui` " +
+            "module instead."
+        : `\`shell\` wraps the pages of this package's React UI, and the app renders with ` +
+            `${JSON.stringify(appRenderer)}, so its docs use the renderer-neutral UI, which has ` +
+            "no shell. Remove `shell`, or render what it adds in a UI of your own named with `ui`.",
+    );
+  }
+  if (issues.length > 0) {
+    throw new Error(`withDocs(): ${issues.join(" ")}`);
+  }
+
+  // The React field is for Farm releases that read nothing else, and the edge snapshot renders
+  // the React UI, so neither describes another UI.
+  const { react: _react, edgeCompiler: _edgeCompiler, ...adapter } = farmDocsRuntimeAdapter;
+  return Object.freeze({ ...adapter, ui: ui.module, renderer: ui.renderer });
+}
+
 /**
  * Enable Farming Labs docs in a Farm.js application.
  *
@@ -102,6 +179,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
   options: FarmDocsAdapterOptions = {},
 ): FarmConfigWithDocs<TConfig> {
   const existing = normalizeExistingDocs(farmConfig.docs);
+  const adapter = resolveFarmDocsAdapter(options, farmRendererName(farmConfig.renderer));
   const enabled = options.enabled ?? true;
   const config = options.config ? { ...existing.config, ...options.config } : existing.config;
 
@@ -115,7 +193,7 @@ export function withDocs<TConfig extends FarmConfigLike>(
     docs: {
       ...existing,
       enabled,
-      adapter: farmDocsRuntimeAdapter,
+      adapter,
       ...(options.configPath ? { configPath: options.configPath } : {}),
       ...(options.config ? { config } : {}),
     },

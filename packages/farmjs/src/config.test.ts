@@ -61,6 +61,67 @@ describe("withDocs", () => {
     });
   });
 
+  it("names the React UI for Farm releases that read either field", () => {
+    expect(withDocs({}).docs.adapter).toMatchObject({
+      ui: "@farming-labs/farmjs/react",
+      renderer: "react",
+      react: "@farming-labs/farmjs/react",
+    });
+  });
+
+  it("describes a docs UI written for another renderer", () => {
+    const adapter = withDocs({}, { ui: { module: "@acme/leaf-docs", renderer: "leaf" } }).docs
+      .adapter!;
+
+    expect(adapter).toMatchObject({
+      id: "@farming-labs/farmjs",
+      protocol: 1,
+      server: "@farming-labs/farmjs/server",
+      ui: "@acme/leaf-docs",
+      renderer: "leaf",
+    });
+    // Older Farm releases read `react` as the React UI, and the edge snapshot renders React.
+    expect(adapter).not.toHaveProperty("react");
+    expect(adapter).not.toHaveProperty("edgeCompiler");
+  });
+
+  it("builds docs pages with the app's renderer when it is not React", () => {
+    const leaf = { name: "leaf", server: "farm-leaf/server", client: "farm-leaf/client" };
+    const adapter = withDocs({ renderer: leaf }).docs.adapter!;
+
+    expect(adapter).toMatchObject({ ui: "@farming-labs/farmjs/universal", renderer: "leaf" });
+    expect(adapter).not.toHaveProperty("react");
+    expect(adapter).not.toHaveProperty("edgeCompiler");
+    // A React app, named or not, keeps the React UI; `ui` still wins over the default.
+    expect(withDocs({ renderer: { name: "react" } }).docs.adapter).toMatchObject({
+      ui: "@farming-labs/farmjs/react",
+      renderer: "react",
+    });
+    expect(
+      withDocs({ renderer: leaf }, { ui: { module: "@acme/leaf-docs", renderer: "leaf" } }).docs
+        .adapter,
+    ).toMatchObject({ ui: "@acme/leaf-docs" });
+  });
+
+  it("says why a shell has nothing to wrap on a renderer other than React", () => {
+    const leaf = { name: "leaf", server: "farm-leaf/server", client: "farm-leaf/client" };
+    expect(() => withDocs({ renderer: leaf }, { shell: "src/shell.tsx" })).toThrow(
+      'the app renders with "leaf", so its docs use the renderer-neutral UI, which has no shell. ' +
+        "Remove `shell`, or render what it adds in a UI of your own named with `ui`.",
+    );
+  });
+
+  it("reports every problem with a docs UI at once", () => {
+    expect(() =>
+      withDocs({}, { ui: { module: "./docs-ui.ts", renderer: "" }, shell: "src/shell.tsx" }),
+    ).toThrow(
+      /^withDocs\(\): `ui.module` "\.\/docs-ui\.ts" is relative.*`ui.renderer` must name.*`shell` wraps/,
+    );
+    expect(() => withDocs({}, { ui: { module: "", renderer: "svelte" } })).toThrow(
+      "`ui.module` must name the docs UI module",
+    );
+  });
+
   it("supports explicitly disabling the adapter", () => {
     expect(withDocs({}, { enabled: false }).docs).toMatchObject({
       enabled: false,

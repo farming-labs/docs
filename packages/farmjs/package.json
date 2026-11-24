@@ -38,6 +38,12 @@
       "import": "./dist/react.js",
       "default": "./dist/react.js"
     },
+    "./universal": {
+      "types": "./dist/universal.d.ts",
+      "browser": "./dist/universal.browser.js",
+      "import": "./dist/universal.js",
+      "default": "./dist/universal.js"
+    },
     "./shell": {
       "types": "./dist/shell.d.ts",
       "import": "./dist/shell.js",
@@ -72,6 +78,16 @@
       "types": "./dist/runtime.d.ts",
       "import": "./dist/runtime.js",
       "default": "./dist/runtime.js"
+    },
+    "./navigation": {
+      "types": "./dist/navigation.d.ts",
+      "import": "./dist/navigation.js",
+      "default": "./dist/navigation.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
     }
   },
   "scripts": {
@@ -100,6 +116,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
+    "jsdom": "26.1.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "^5.9.3",
@@ -111,6 +128,12 @@
     "@farming-labs/docs": ">=0.2.137",
     "@farming-labs/theme": "<0.2.133 || >=0.2.133-perf.0",
     "react": "^18.2.0 || ^19.0.0",
-    "react-dom": "^18.2.0 || ^19.0.0"
+    "react-dom": "^18.2.0 || ^19.0.0",
+    "vitest": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
   }
 }

@@ -745,6 +745,104 @@ describe("createFarmDocsRuntimeHandler", () => {
     ).not.toThrow();
   });
 
+  it("renders pages with a docs UI written for another renderer", async () => {
+    const prepared: string[] = [];
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadUIModule: async () => ({
+        async loadFarmDocsPageModule(data) {
+          prepared.push(data.url);
+        },
+        renderFarmDocsPage: ({ data }) => `<main class="leaf-docs">${data.title}</main>`,
+        hydrateFarmDocs: () => undefined,
+      }),
+      // A host passes both loaders only when the UI is React's; loadUIModule wins.
+      loadReactModule: async () => {
+        throw new Error("The React loader must not run when the host passes loadUIModule.");
+      },
+    });
+
+    const response = await handler(new Request("https://farm.example/docs"));
+    const html = await response!.text();
+    expect(response!.status).toBe(200);
+    expect(html).toMatch(/<div id="farm-docs-root"[^>]*><main class="leaf-docs">[^<]+<\/main>/);
+    expect(prepared).toEqual(["/docs"]);
+  });
+
+  it("passes the app's renderer to a docs UI that renders with it", async () => {
+    const renderer = {
+      name: "test",
+      createElement: (type: unknown, _props: unknown, ...children: unknown[]) => ({
+        type,
+        children,
+      }),
+      renderToString: (element: unknown) => {
+        const { type, children } = element as { type: string; children: unknown[] };
+        return `<${type}>${children.join("")}</${type}>`;
+      },
+    };
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadUIModule: async () => ({
+        renderFarmDocsPage: (input) =>
+          input.renderer!.renderToString(
+            input.renderer!.createElement("main", null, input.data.title),
+          ),
+        hydrateFarmDocs: () => undefined,
+      }),
+      loadRenderer: async () => renderer,
+    });
+
+    const html = await (await handler(new Request("https://farm.example/docs")))!.text();
+    expect(html).toMatch(/<div id="farm-docs-root"[^>]*><main>Introduction<\/main>/);
+  });
+
+  it("writes the app renderer's hydration script into the head, before the client entry", async () => {
+    const script = "<script>window._$HY={events:[],completed:new WeakSet(),r:{}}</script>";
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadUIModule: async () => ({
+        renderFarmDocsPage: () => "<main>Introduction</main>",
+        hydrateFarmDocs: () => undefined,
+      }),
+      loadRenderer: async () => ({
+        name: "solid",
+        createElement: () => null,
+        renderToString: () => "",
+        generateHydrationScript: () => script,
+      }),
+    });
+
+    const html = await (await handler(new Request("https://farm.example/docs")))!.text();
+    const head = html.slice(0, html.indexOf("</head>"));
+    expect(head).toContain(script);
+    expect(html.indexOf(script)).toBeLessThan(html.indexOf('src="/farm-client.js"'));
+  });
+
+  it("names Solid's root render id on the docs root, so Solid does not guess it", async () => {
+    const render = (name: string) =>
+      createFarmDocsRuntimeHandler(config, {
+        loadUIModule: async () => ({
+          renderFarmDocsPage: () => "<main>Introduction</main>",
+          hydrateFarmDocs: () => undefined,
+        }),
+        loadRenderer: async () => ({ name, createElement: () => null, renderToString: () => "" }),
+      })(new Request("https://farm.example/docs")).then((response) => response!.text());
+
+    expect(await render("solid")).toContain(
+      '<div id="farm-docs-root" data-farm-solid-render-id=""><main>Introduction</main>',
+    );
+    expect(await render("vue")).not.toContain("data-farm-solid-render-id");
+  });
+
+  it("says what a docs UI module must export when it renders nothing", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      loadUIModule: async () => ({ hydrateFarmDocs: () => undefined }),
+    });
+
+    await expect(handler(new Request("https://farm.example/docs"))).rejects.toThrow(
+      "The docs UI module exports neither renderFarmDocsPage() nor a FarmDocsPage component.",
+    );
+  });
+
   it("builds a rendered page's response with the host's createHtmlResponse", async () => {
     const built: { html: string; init: ResponseInit }[] = [];
     const handler = createFarmDocsRuntimeHandler(config, {
@@ -1182,6 +1280,23 @@ openGraph:
     // @property registrations do not cascade and stay top-level, ahead of the layer.
     expect(css.indexOf("@property")).toBeLessThan(layerStart);
     expect(css.lastIndexOf("@property")).toBeLessThan(layerStart);
+  });
+
+  it("serves the renderer-neutral UI's layout rules in the same layer", async () => {
+    const handler = createFarmDocsRuntimeHandler(config, {
+      clientEntry: "/farm-client.js",
+      loadReactModule: async () => ({
+        FarmDocsPage: ({ data }) => createElement("main", null, data.title),
+      }),
+    });
+
+    const response = await handler(new Request("https://farm.example/__farm_docs/browser.css"));
+    const css = (await response?.text()) ?? "";
+
+    // The page writes no <style> of its own, so its grid comes from here.
+    expect(
+      css.indexOf('#nd-docs-layout[data-farm-docs-ui]{grid-template:"sidebar'),
+    ).toBeGreaterThan(css.indexOf("@layer farm-docs-adapter {"));
   });
 
   it("links each docs page to its Markdown mirror in the document head", async () => {
